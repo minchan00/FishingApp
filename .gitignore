@@ -35,6 +35,7 @@ yarn-error.*
 
 # API keys (민감 정보 - 절대 커밋하지 마세요)
 src/config/api.js
+src/config/firebase.js
 
 # typescript
 *.tsbuildinfo
