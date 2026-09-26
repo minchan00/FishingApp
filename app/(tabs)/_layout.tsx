@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme/colors';
 
 const TABS = [
@@ -10,7 +11,14 @@ const TABS = [
   { name: 'community', label: '커뮤니티', icon: '👥' },
 ] as const;
 
+/** 아이콘 + 라벨이 들어가는 탭바 본체 높이 (시스템 내비게이션 바 영역 제외) */
+const TAB_BAR_CONTENT_HEIGHT = 62;
+
 export default function TabsLayout() {
+  // 폰마다 하단 시스템 바(제스처 바, 3버튼 바) 높이가 달라서 실제 여백을 읽어 더한다
+  const { bottom } = useSafeAreaInsets();
+  const bottomPad = Math.max(bottom, 8);
+
   return (
     <Tabs
       initialRouteName="index"
@@ -21,8 +29,8 @@ export default function TabsLayout() {
           backgroundColor: colors.oceanDeep,
           borderTopColor: '#1a3a4a',
           borderTopWidth: 1,
-          height: 90,
-          paddingBottom: 28,
+          height: TAB_BAR_CONTENT_HEIGHT + bottomPad,
+          paddingBottom: bottomPad,
           paddingTop: 8,
         },
       }}
