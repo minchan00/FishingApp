@@ -7,6 +7,7 @@ import { ObsSearchField } from '@/components/home/ObsPickerModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ListRow } from '@/components/ui/ListRow';
 import { BottomSheet } from '@/components/ui/Sheet';
 import {
@@ -80,24 +81,24 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
 
   const filteredObs = OBS_LIST.filter((o) => o.name.includes(searchQuery));
 
-  // 전체 화면 모달이라 ScreenHeader(router.back) 대신 같은 모양의 헤더를 직접 그린다
   const header = (
-    <View className="flex-row items-center bg-bg px-5 pb-3" style={{ paddingTop: top + 12 }}>
-      <Pressable onPress={onClose} accessibilityLabel="뒤로" className="-ml-2 mr-1 h-10 w-10 items-center justify-center rounded-full active:bg-surface">
-        <Icon name="chevron-left" size={26} color={colors.ink} />
-      </Pressable>
-      <Text className="flex-1 text-heading text-ink">일자별 예보</Text>
-      <Pressable
-        onPress={() => setSearchModal(true)}
-        accessibilityRole="button"
-        accessibilityLabel="지역 선택"
-        className="h-9 flex-row items-center gap-1 rounded-full bg-surface px-3 active:bg-surface-strong"
-      >
-        <Icon name="map-pin" size={14} color={colors.sub} />
-        <Text className="text-label font-medium text-ink">{currentObs.name}</Text>
-        <Icon name="chevron-down" size={14} color={colors.sub} />
-      </Pressable>
-    </View>
+    <ScreenHeader
+      title="일자별 예보"
+      back
+      onBack={onClose}
+      right={
+        <Pressable
+          onPress={() => setSearchModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel="지역 선택"
+          className="h-9 flex-row items-center gap-1 rounded-full bg-navy-light px-3 active:opacity-80"
+        >
+          <Icon name="map-pin" size={14} color={colors.white} />
+          <Text className="text-label font-medium text-white">{currentObs.name}</Text>
+          <Icon name="chevron-down" size={14} color={colors.white} />
+        </Pressable>
+      }
+    />
   );
 
   const searchSheet = (

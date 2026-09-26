@@ -1,6 +1,7 @@
 # 디자인 기준
 
-밝은 화이트 테마. 흰 배경, 연회색 면, 바다색 강조 하나. 장식보다 여백과 글자 크기로 위계를 만든다.
+남색 헤더 + 흰 본문. 화면 위는 짙은 남색(브랜드), 내용은 흰 바탕·연회색 면. 장식보다 여백과 글자 크기로 위계를 만든다.
+홈은 남색 헤더 안에 커뮤니티 인증샷 사진 배너를 둔다 (사진 중심).
 
 ## 색 (tailwind 클래스 / `colors.*`)
 | 용도 | 클래스 | 값 |
@@ -11,7 +12,8 @@
 | 본문 글자 | `text-ink` | #191F28 |
 | 보조 글자 | `text-sub` | #4E5968 |
 | 흐린 글자·아이콘 | `text-mute` | #8B95A1 |
-| 강조(버튼, 선택, 링크) | `bg-primary` / `text-primary` / `bg-primary-soft` | #0A7BB5 |
+| 헤더·브랜드 | `bg-navy` / 눌림·배지 `bg-navy-light` | #0B2545 |
+| 강조(버튼, 선택, 링크) | `bg-primary` / `text-primary` / `bg-primary-soft` | #1B4F9C |
 | 위험·오류 | `text-danger` / `bg-danger-soft` | #E5484D |
 | 성공·주의 | `success`, `warning` (+ `-soft`) | |
 
@@ -34,7 +36,7 @@
 ## 공통 부품 (`src/components/ui/`)
 | 부품 | 쓰는 곳 |
 |---|---|
-| `ScreenHeader` / `IconButton` | 화면 맨 위 제목, 뒤로 가기, 오른쪽 아이콘 버튼 |
+| `ScreenHeader` / `IconButton` | 화면 맨 위 남색 헤더(`tone="plain"`이면 흰색). 헤더 안 IconButton은 자동으로 흰색. 상태바 글자는 흰색이므로 헤더 없는 흰 화면은 `<StatusBar style="dark" />` |
 | `Button` | primary(주 행동, 화면당 하나) · secondary · ghost · danger · kakao |
 | `TextField` | 라벨 + 입력 + 오류. react-hook-form `Controller`로 연결 |
 | `Card` | 정보 묶음. `tone="outline"`은 흰 바탕 + 테두리 |

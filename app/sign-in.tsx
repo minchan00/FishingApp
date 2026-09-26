@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -78,6 +79,7 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView className="flex-1 bg-bg" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerClassName="grow justify-center bg-bg px-6 py-12"
         keyboardShouldPersistTaps="handled"

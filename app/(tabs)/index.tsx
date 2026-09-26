@@ -1,6 +1,8 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CatchBanner from '@/components/home/CatchBanner';
 import ObsPickerModal from '@/components/home/ObsPickerModal';
 import { Card } from '@/components/ui/Card';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -79,6 +81,7 @@ function SmallAction({ icon, label, onPress }: { icon: IconName; label: string; 
 }
 
 export default function HomeScreen() {
+  const { top } = useSafeAreaInsets();
   const profile = useProfile();
   const userNickname = profile.data?.nickname || '낚시꾼';
 
@@ -250,12 +253,17 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-bg">
-      <ScreenHeader
-        eyebrow="오늘의 낚시"
-        title={`안녕하세요, ${userNickname}님`}
-        right={<IconButton icon="menu" label="설정" onPress={() => router.push('/settings')} />}
-      />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pb-8 pt-2">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-8" bounces={false}>
+        <ScreenHeader
+          eyebrow="오늘의 낚시"
+          title={`안녕하세요, ${userNickname}님`}
+          right={<IconButton icon="menu" label="설정" onPress={() => router.push('/settings')} />}
+        >
+          <View className="px-5 pb-5">
+            <CatchBanner />
+          </View>
+        </ScreenHeader>
+        <View className="px-5 pt-5">
         {renderWeatherCard()}
 
         <Text className="mb-2.5 mt-6 text-label font-medium text-mute">빠른 시작</Text>
@@ -270,7 +278,10 @@ export default function HomeScreen() {
             </Card>
           ))}
         </View>
+        </View>
       </ScrollView>
+      {/* 헤더가 스크롤로 올라가도 상태바 글자(흰색)가 보이도록 뒤를 남색으로 덮는다 */}
+      <View className="absolute left-0 right-0 top-0 bg-navy" style={{ height: top }} />
 
       {/* 일자별 상세 예보 모달 */}
       <AppModal visible={detailModal} animationType="slide" onRequestClose={() => setDetailModal(false)}>

@@ -1,4 +1,5 @@
 import { Redirect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
@@ -14,6 +15,7 @@ export default function AuthCallbackScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
+        <StatusBar style="dark" />
         <ActivityIndicator color={colors.primary} />
       </View>
     );

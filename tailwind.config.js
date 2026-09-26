@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// 디자인 기준 (밝은 화이트 테마). 값은 src/theme/colors.ts와 같게 유지한다.
+// 디자인 기준: 남색 헤더 + 흰 본문. 값은 src/theme/colors.ts와 같게 유지한다.
 // NativeWind는 1rem을 14px로 계산하므로 글자·모서리는 px로 고정한다.
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
@@ -14,7 +14,8 @@ module.exports = {
         ink: '#191F28',
         sub: '#4E5968',
         mute: '#8B95A1',
-        primary: { DEFAULT: '#0A7BB5', pressed: '#086696', soft: '#E7F3FA' },
+        navy: { DEFAULT: '#0B2545', light: '#163A63', line: 'rgba(255,255,255,0.14)' },
+        primary: { DEFAULT: '#1B4F9C', pressed: '#143D7A', soft: '#E8EEF8' },
         danger: { DEFAULT: '#E5484D', soft: '#FDECEC' },
         success: { DEFAULT: '#12A150', soft: '#E7F6EE' },
         warning: { DEFAULT: '#D9820B', soft: '#FFF4E3' },

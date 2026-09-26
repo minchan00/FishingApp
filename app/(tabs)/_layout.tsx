@@ -24,7 +24,7 @@ export default function TabsLayout() {
       initialRouteName="index"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.ink,
+        tabBarActiveTintColor: colors.navy,
         tabBarInactiveTintColor: colors.mute,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
         tabBarStyle: {
@@ -44,7 +44,7 @@ export default function TabsLayout() {
           name={tab.name}
           options={{
             title: tab.label,
-            tabBarIcon: ({ focused }) => <Icon name={tab.icon} size={22} color={focused ? colors.ink : colors.mute} />,
+            tabBarIcon: ({ focused }) => <Icon name={tab.icon} size={22} color={focused ? colors.navy : colors.mute} />,
           }}
         />
       ))}

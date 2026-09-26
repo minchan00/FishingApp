@@ -1,4 +1,4 @@
-// 디자인 기준 색상 (밝은 화이트 테마). tailwind.config.js의 colors와 같은 값.
+// 디자인 기준 색상 (남색 헤더 + 흰 본문). tailwind.config.js의 colors와 같은 값.
 // className을 쓸 수 없는 곳(아이콘 color, 탭바 style, 지도 등)에서만 직접 쓴다.
 export const colors = {
   bg: '#FFFFFF',
@@ -8,9 +8,12 @@ export const colors = {
   ink: '#191F28',
   sub: '#4E5968',
   mute: '#8B95A1',
-  primary: '#0A7BB5',
-  primaryPressed: '#086696',
-  primarySoft: '#E7F3FA',
+  navy: '#0B2545',
+  navyLight: '#163A63',
+  onNavyMuted: 'rgba(255,255,255,0.72)',
+  primary: '#1B4F9C',
+  primaryPressed: '#143D7A',
+  primarySoft: '#E8EEF8',
   danger: '#E5484D',
   dangerSoft: '#FDECEC',
   success: '#12A150',
