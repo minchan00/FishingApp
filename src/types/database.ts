@@ -488,7 +488,6 @@ export type Database = {
         Args: { p_daily_limit: number; p_user_id: string }
         Returns: number
       }
-      delete_my_account: { Args: never; Returns: undefined }
       refund_ai_quota: { Args: { p_usage_id: number }; Returns: undefined }
       save_fishing_log: {
         Args: { p_catches: Json; p_log: Json; p_log_id?: number }

@@ -136,12 +136,12 @@ describe('AI 사용량 제한', () => {
 });
 
 describe('회원 탈퇴', () => {
-  it('탈퇴하면 계정·일지·글·사진이 모두 지워진다', async () => {
-    await db.exec(`insert into storage.objects (bucket_id, name, owner_id) values ('photos', '${A}/x.jpg', '${A}')`);
-    await as('authenticated', 'select public.delete_my_account()');
+  // 실제 탈퇴는 delete-account Edge Function이 사진을 지운 뒤 auth 계정을 삭제한다.
+  // 여기서는 계정 삭제가 모든 데이터로 연쇄 삭제되는지 확인한다.
+  it('계정을 삭제하면 프로필·일지·글이 모두 지워진다', async () => {
+    await db.exec(`delete from auth.users where id = '${A}'`);
     assert.equal(await count(`select count(*) from public.profiles where id = '${A}'`), 0);
     assert.equal(await count(`select count(*) from public.fishing_logs where user_id = '${A}'`), 0);
     assert.equal(await count(`select count(*) from public.posts where user_id = '${A}'`), 0);
-    assert.equal(await count(`select count(*) from storage.objects where owner_id = '${A}'`), 0);
   });
 });

@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '@/lib/supabase';
@@ -93,7 +94,12 @@ export async function changePassword(email: string, currentPassword: string, new
 
 /** 계정과 모든 데이터(일지·게시글·사진)를 영구 삭제한다. */
 export async function deleteAccount(): Promise<void> {
-  const { error } = await supabase.rpc('delete_my_account');
-  if (error) throw new Error(error.message);
+  // 사진 삭제와 계정 삭제는 서버 권한이 필요해 Edge Function(delete-account)에서 한다
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+  if (error) {
+    const body: { error?: string } | null =
+      error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
+    throw new Error(body?.error ?? '계정을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.');
+  }
   await supabase.auth.signOut({ scope: 'local' });
 }
