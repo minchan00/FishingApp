@@ -1,6 +1,7 @@
 import { supabase, unwrap, check } from '@/lib/supabase';
 import type { Json } from '@/types/database';
 import type { Catch, FishingLog, FishingLogInput, Rating } from '@/types/models';
+import { asRating } from './guards';
 import { photoUrl, resolvePhoto } from './photos';
 
 export function ratingFor(catches: Catch[]): Rating {
@@ -24,7 +25,7 @@ export async function listMyLogs(): Promise<FishingLog[]> {
     weather: r.weather,
     duration: r.duration,
     memo: r.memo,
-    rating: r.rating,
+    rating: asRating(r.rating),
     imageUrl: photoUrl(r.image_path),
     createdAt: r.created_at,
     catches: r.catches.map((c) => ({
@@ -55,7 +56,7 @@ export async function saveLog(input: FishingLogInput, logId?: number): Promise<n
         size_cm: c.sizeCm,
         count: c.count,
       })) satisfies Json,
-      p_log_id: logId ?? null,
+      p_log_id: logId,
     }),
   );
   return id;

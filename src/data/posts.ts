@@ -1,22 +1,25 @@
 import { supabase, unwrap, check } from '@/lib/supabase';
 import type { Comment, Post, PostInput } from '@/types/models';
+import { asCategory, hasKeys } from './guards';
 import { photoUrl, resolvePhoto } from './photos';
 
 export async function listPosts(): Promise<Post[]> {
   const rows = unwrap(await supabase.from('post_feed').select('*').order('created_at', { ascending: false }).limit(100));
-  return rows.map((r) => ({
-    id: r.id,
-    authorId: r.user_id,
-    authorNickname: r.author_nickname,
-    authorEmoji: r.author_emoji,
-    category: r.category,
-    content: r.content,
-    imageUrl: photoUrl(r.image_path),
-    likeCount: r.like_count,
-    likedByMe: r.liked_by_me,
-    commentCount: r.comment_count,
-    createdAt: r.created_at,
-  }));
+  return rows
+    .filter((r) => hasKeys(r, 'id', 'user_id', 'created_at'))
+    .map((r) => ({
+      id: r.id,
+      authorId: r.user_id,
+      authorNickname: r.author_nickname ?? '낚시꾼',
+      authorEmoji: r.author_emoji ?? '🎣',
+      category: asCategory(r.category),
+      content: r.content ?? '',
+      imageUrl: photoUrl(r.image_path),
+      likeCount: r.like_count ?? 0,
+      likedByMe: r.liked_by_me ?? false,
+      commentCount: r.comment_count ?? 0,
+      createdAt: r.created_at,
+    }));
 }
 
 export async function createPost(input: PostInput): Promise<void> {
@@ -42,15 +45,17 @@ export async function listComments(postId: number): Promise<Comment[]> {
   const rows = unwrap(
     await supabase.from('comment_feed').select('*').eq('post_id', postId).order('created_at', { ascending: true }),
   );
-  return rows.map((r) => ({
-    id: r.id,
-    postId: r.post_id,
-    authorId: r.user_id,
-    authorNickname: r.author_nickname,
-    authorEmoji: r.author_emoji,
-    content: r.content,
-    createdAt: r.created_at,
-  }));
+  return rows
+    .filter((r) => hasKeys(r, 'id', 'post_id', 'user_id', 'created_at'))
+    .map((r) => ({
+      id: r.id,
+      postId: r.post_id,
+      authorId: r.user_id,
+      authorNickname: r.author_nickname ?? '낚시꾼',
+      authorEmoji: r.author_emoji ?? '🎣',
+      content: r.content ?? '',
+      createdAt: r.created_at,
+    }));
 }
 
 export async function addComment(postId: number, content: string): Promise<void> {

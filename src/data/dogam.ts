@@ -1,5 +1,6 @@
 import { supabase, unwrap, check } from '@/lib/supabase';
 import type { DogamEntry } from '@/types/models';
+import { hasKeys } from './guards';
 import { photoUrl } from './photos';
 
 /**
@@ -8,15 +9,17 @@ import { photoUrl } from './photos';
  */
 export async function listMyDogam(): Promise<DogamEntry[]> {
   const rows = unwrap(await supabase.from('my_dogam').select('*').order('last_caught_on', { ascending: false }));
-  return rows.map((r) => ({
-    species: r.species,
-    bestSizeCm: r.best_size_cm,
-    totalCount: r.total_count,
-    lastCaughtOn: r.last_caught_on,
-    bestLocation: r.best_location,
-    imageUrl: photoUrl(r.image_path),
-    memo: r.memo,
-  }));
+  return rows
+    .filter((r) => hasKeys(r, 'species', 'last_caught_on'))
+    .map((r) => ({
+      species: r.species,
+      bestSizeCm: r.best_size_cm,
+      totalCount: r.total_count ?? 0,
+      lastCaughtOn: r.last_caught_on,
+      bestLocation: r.best_location,
+      imageUrl: photoUrl(r.image_path),
+      memo: r.memo ?? '',
+    }));
 }
 
 export async function saveDogamMemo(species: string, memo: string): Promise<void> {

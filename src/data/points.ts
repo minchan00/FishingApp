@@ -1,8 +1,8 @@
 import { supabase, unwrap, check } from '@/lib/supabase';
-import type { FishingPointRow } from '@/types/database';
+import type { Tables } from '@/types/database';
 import type { FishingPoint, FishingPointInput } from '@/types/models';
 
-function toPoint(r: FishingPointRow): FishingPoint {
+function toPoint(r: Tables<'fishing_points'>): FishingPoint {
   return {
     id: r.id,
     ownerId: r.user_id,
