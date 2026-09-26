@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 
 // 낚시 포인트 화면들이 같이 쓰는 스타일 조각.
 // NativeWind의 rem은 14px이라 원래 px 값을 그대로 옮기려고 임의값([..px])을 쓴다.
@@ -41,11 +42,11 @@ export function FieldError({ message }: { message: string | undefined }) {
 /** 아래에서 올라오는 시트 모달 (오버레이 + 둥근 상단) */
 export function SheetModal({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: ReactNode }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-[rgba(0,0,0,0.7)] justify-end">
-        <View className="bg-ocean-mid rounded-t-[24px] p-[20px] max-h-[90%]">{children}</View>
+        <SheetPanel className="bg-ocean-mid rounded-t-[24px] p-[20px] max-h-[90%]">{children}</SheetPanel>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

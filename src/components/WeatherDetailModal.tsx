@@ -1,7 +1,8 @@
 import { FlashList } from '@shopify/flash-list';
 import { format, getDay, parseISO } from 'date-fns';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 import {
   OBS_LIST, forecastTime, getConditionEmoji, isKstToday, kstHourNow, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
@@ -216,9 +217,9 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
       </ScrollView>
 
       {/* 지역 검색 모달 */}
-      <Modal visible={searchModal} animationType="slide" transparent onRequestClose={() => setSearchModal(false)}>
+      <AppModal visible={searchModal} animationType="slide" transparent onRequestClose={() => setSearchModal(false)}>
         <View className="flex-1 bg-black/60 justify-end">
-          <View className="bg-[#0f3a50] rounded-t-3xl p-5 pb-10">
+          <SheetPanel className="bg-[#0f3a50] rounded-t-3xl p-5">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-white text-[16px] font-bold">📍 지역 선택</Text>
               <TouchableOpacity onPress={() => { setSearchModal(false); setSearchQuery(''); }}>
@@ -265,9 +266,9 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
               ItemSeparatorComponent={ObsSeparator}
               style={{ maxHeight: 360 }}
             />
-          </View>
+          </SheetPanel>
         </View>
-      </Modal>
+      </AppModal>
     </View>
   );
 }

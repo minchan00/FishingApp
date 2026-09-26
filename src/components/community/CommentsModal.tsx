@@ -1,14 +1,5 @@
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { errorMessage } from '@/components/log/format';
@@ -64,10 +55,10 @@ export function CommentsModal({ post, visible, nickname, userId, onClose }: Prop
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View className="flex-1 justify-end bg-black/70">
-          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+          <SheetPanel className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-[16px] font-semibold text-white">💬 댓글</Text>
               <TouchableOpacity onPress={onClose}>
@@ -127,9 +118,9 @@ export function CommentsModal({ post, visible, nickname, userId, onClose }: Prop
               </TouchableOpacity>
             </View>
             <FieldError message={formState.errors.content?.message} spacing="mt-1.5" />
-          </View>
+          </SheetPanel>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }

@@ -1,4 +1,5 @@
-import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 import { Image } from 'expo-image';
 import type { FishingLog } from '@/types/models';
 import { formatKoreanDate } from './format';
@@ -15,9 +16,9 @@ const SECTION_CARD = 'mb-3 rounded-[14px] border border-card-border bg-white/5 p
 
 export function LogDetailModal({ log, visible, onClose, onEdit, onDelete }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/70">
-        <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+        <SheetPanel className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
           {log && (
             <>
               <View className="mb-4 flex-row items-center justify-between">
@@ -77,8 +78,8 @@ export function LogDetailModal({ log, visible, onClose, onEdit, onDelete }: Prop
               </ScrollView>
             </>
           )}
-        </View>
+        </SheetPanel>
       </View>
-    </Modal>
+    </AppModal>
   );
 }

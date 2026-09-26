@@ -1,6 +1,7 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal } from '@/components/ui/Sheet';
 import ObsPickerModal from '@/components/home/ObsPickerModal';
 import WeatherDetailModal from '@/components/WeatherDetailModal';
 import {
@@ -237,9 +238,9 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* 일자별 상세 예보 모달 */}
-      <Modal visible={detailModal} animationType="slide" onRequestClose={() => setDetailModal(false)}>
+      <AppModal visible={detailModal} animationType="slide" onRequestClose={() => setDetailModal(false)}>
         <WeatherDetailModal obs={obs} onClose={() => setDetailModal(false)} />
-      </Modal>
+      </AppModal>
 
       {/* 관측소 선택 모달 */}
       <ObsPickerModal

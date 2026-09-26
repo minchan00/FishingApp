@@ -1,15 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 import { Image } from 'expo-image';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -108,10 +99,10 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View className="flex-1 justify-end bg-black/70">
-          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+          <SheetPanel className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="flex-1 text-[16px] font-semibold text-white">
                 {editingLog ? '✏️ 낚시 일지 수정' : '📔 낚시 일지 작성'}
@@ -266,9 +257,9 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
                 <Text className="text-[15px] font-semibold text-white">{editingLog ? '수정 저장' : '일지 등록'}</Text>
               )}
             </TouchableOpacity>
-          </View>
+          </SheetPanel>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }

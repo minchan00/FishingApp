@@ -1,14 +1,5 @@
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AppModal, SheetPanel } from '@/components/ui/Sheet';
 import { Image } from 'expo-image';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -95,10 +86,10 @@ export function WritePostModal({ visible, nickname, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+    <AppModal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <View className="flex-1 justify-end bg-black/70">
-          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+          <SheetPanel className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-[16px] font-semibold text-white">✏️ 게시글 작성</Text>
               <TouchableOpacity onPress={close}>
@@ -232,9 +223,9 @@ export function WritePostModal({ visible, nickname, onClose }: Props) {
                 <Text className="text-[15px] font-semibold text-white">게시글 등록</Text>
               )}
             </TouchableOpacity>
-          </View>
+          </SheetPanel>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppModal>
   );
 }
