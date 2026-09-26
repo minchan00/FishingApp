@@ -1,25 +1,39 @@
-import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { Controller, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { SPECIES_OPTIONS, WEATHER_OPTIONS } from '@/constants/fishing';
-import { parseSize, todayYmd } from '@/components/log/format';
+import { todayYmd } from '@/components/log/format';
+import { FieldError, FormTextInput } from '@/components/log/FormTextInput';
 import { pickImageFromLibrary } from '@/components/log/pickImage';
 import { useCreatePost, useSaveLog } from '@/hooks/queries';
+import { postFormSchema, type PostFormOutput, type PostFormValues } from '@/schemas/post';
 import { colors } from '@/theme/colors';
-import type { PostCategory } from '@/types/models';
 import { POST_CATEGORIES } from './categories';
+
+const defaultValues = (): PostFormValues => ({
+  category: '조황 정보',
+  content: '',
+  imageUri: null,
+  registerToLog: false,
+  logSpecies: '광어',
+  logSize: '',
+  logLocation: '',
+});
+
+const chipClass = (active: boolean) =>
+  `rounded-[10px] border px-3 py-1 ${active ? 'border-accent bg-accent' : 'border-card-border bg-card'}`;
+const LOG_INPUT = 'mb-2 rounded-[10px] border border-card-border bg-card p-3 text-[13px] text-white';
 
 type Props = {
   visible: boolean;
@@ -31,66 +45,44 @@ export function WritePostModal({ visible, nickname, onClose }: Props) {
   const createPost = useCreatePost();
   const saveLog = useSaveLog();
 
-  const [category, setCategory] = useState<PostCategory>('조황 정보');
-  const [content, setContent] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [registerToLog, setRegisterToLog] = useState(false);
-  const [logSpecies, setLogSpecies] = useState<string>('광어');
-  const [logSize, setLogSize] = useState('');
-  const [logLocation, setLogLocation] = useState('');
+  const { control, handleSubmit, reset, setValue } = useForm<PostFormValues, unknown, PostFormOutput>({
+    resolver: zodResolver(postFormSchema),
+    defaultValues: defaultValues(),
+  });
+  const [category, imageUri, registerToLog] = useWatch({ control, name: ['category', 'imageUri', 'registerToLog'] });
 
   const submitting = createPost.isPending || saveLog.isPending;
 
-  const resetForm = () => {
-    setCategory('조황 정보');
-    setContent('');
-    setImageUri(null);
-    setRegisterToLog(false);
-    setLogSpecies('광어');
-    setLogSize('');
-    setLogLocation('');
-  };
-
   const close = () => {
     onClose();
-    resetForm();
+    reset(defaultValues());
   };
 
   const pickImage = async () => {
     const uri = await pickImageFromLibrary();
-    if (uri) setImageUri(uri);
+    if (uri) setValue('imageUri', uri);
   };
 
-  const submitPost = async () => {
-    if (!content.trim()) {
-      Alert.alert('알림', '내용을 입력해주세요!');
-      return;
-    }
-    const alsoLog = category === '인증샷' && registerToLog;
-    if (alsoLog && !logLocation.trim()) {
-      Alert.alert('알림', '일지 등록을 위해 장소를 입력해주세요!');
-      return;
-    }
-
+  const submitPost = async ({ post, log }: PostFormOutput) => {
     try {
-      await createPost.mutateAsync({ category, content: content.trim(), imageUri });
+      await createPost.mutateAsync(post);
     } catch (e) {
       console.error('게시글 등록 실패:', e);
       Alert.alert('오류', '게시글 등록에 실패했어요.');
       return;
     }
 
-    if (alsoLog) {
+    if (log) {
       try {
         await saveLog.mutateAsync({
           input: {
             fishedOn: todayYmd(),
-            location: logLocation.trim(),
+            location: log.location,
             weather: WEATHER_OPTIONS[0],
             duration: '',
-            memo: content.trim(),
-            imageUri,
-            catches: [{ species: logSpecies, sizeCm: parseSize(logSize), count: 1 }],
+            memo: post.content,
+            imageUri: post.imageUri,
+            catches: [log.catchItem],
           },
         });
       } catch (e) {
@@ -104,109 +96,140 @@ export function WritePostModal({ visible, nickname, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>✏️ 게시글 작성</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        <View className="flex-1 justify-end bg-black/70">
+          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[16px] font-semibold text-white">✏️ 게시글 작성</Text>
               <TouchableOpacity onPress={close}>
-                <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
+                <Text className="text-[20px] text-muted">✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 10 }}>🎣 {nickname} 으로 작성됩니다</Text>
+              <Text className="mb-2.5 text-[12px] text-muted">🎣 {nickname} 으로 작성됩니다</Text>
 
               {/* 카테고리 */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {POST_CATEGORIES.map((c) => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => {
-                      setCategory(c);
-                      if (c !== '인증샷') setRegisterToLog(false);
-                    }}
-                    style={[styles.chip, category === c && styles.chipActive, { marginRight: 8 }]}
-                  >
-                    <Text style={[styles.chipText, category === c && { color: colors.white }]}>{c}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <Controller
+                control={control}
+                name="category"
+                render={({ field, fieldState }) => (
+                  <>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                      {POST_CATEGORIES.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          onPress={() => {
+                            field.onChange(c);
+                            if (c !== '인증샷') setValue('registerToLog', false);
+                          }}
+                          className={`mr-2 ${chipClass(field.value === c)}`}
+                        >
+                          <Text className={`text-[12px] ${field.value === c ? 'text-white' : 'text-muted'}`}>{c}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <FieldError message={fieldState.error?.message} />
+                  </>
+                )}
+              />
 
               {/* 내용 */}
-              <TextInput
-                style={styles.textArea}
+              <FormTextInput
+                control={control}
+                name="content"
+                className="mb-2.5 min-h-[100px] rounded-xl border border-card-border bg-card p-3.5 text-[14px] text-white"
+                style={{ textAlignVertical: 'top' }}
                 placeholder="낚시 이야기를 공유해주세요..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 numberOfLines={5}
-                value={content}
-                onChangeText={setContent}
               />
 
               {/* 사진 선택 */}
-              <TouchableOpacity style={styles.imagePickBtn} onPress={pickImage}>
-                <Text style={{ color: colors.textMuted, fontSize: 13 }}>{imageUri ? '📷 사진 변경' : '📷 사진 추가'}</Text>
+              <TouchableOpacity
+                className="mb-2.5 items-center rounded-xl border border-white/15 bg-card p-3.5"
+                onPress={pickImage}
+              >
+                <Text className="text-[13px] text-muted">{imageUri ? '📷 사진 변경' : '📷 사진 추가'}</Text>
               </TouchableOpacity>
               {imageUri && (
-                <View style={{ marginBottom: 12 }}>
-                  <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
-                  <TouchableOpacity onPress={() => setImageUri(null)} style={styles.removeImageBtn}>
-                    <Text style={{ color: colors.white, fontSize: 11 }}>✕ 사진 제거</Text>
+                <View className="mb-3">
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={{ width: '100%', height: 180, borderRadius: 10 }}
+                    contentFit="cover"
+                    transition={150}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setValue('imageUri', null)}
+                    className="mt-1.5 self-end rounded-md bg-black/50 px-2.5 py-1"
+                  >
+                    <Text className="text-[11px] text-white">✕ 사진 제거</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {/* 인증샷: 일지 등록 옵션 */}
               {category === '인증샷' && (
-                <TouchableOpacity style={styles.logRegisterToggle} onPress={() => setRegisterToLog(!registerToLog)}>
-                  <View style={[styles.toggleDot, registerToLog && styles.toggleDotActive]} />
-                  <Text style={{ color: registerToLog ? colors.accent : colors.textMuted, fontSize: 13, marginLeft: 10 }}>
+                <TouchableOpacity
+                  className="mb-2.5 flex-row items-center rounded-xl border border-accent/30 bg-accent/[0.08] p-3.5"
+                  onPress={() => setValue('registerToLog', !registerToLog)}
+                >
+                  <View
+                    className={`h-5 w-5 rounded-full border-2 ${registerToLog ? 'border-accent bg-accent' : 'border-white/30 bg-transparent'}`}
+                  />
+                  <Text className={`ml-2.5 text-[13px] ${registerToLog ? 'text-accent' : 'text-muted'}`}>
                     🎣 낚시 일지에도 등록하기
                   </Text>
                 </TouchableOpacity>
               )}
 
               {category === '인증샷' && registerToLog && (
-                <View style={styles.logSection}>
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 8 }}>어종 선택</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                    {SPECIES_OPTIONS.map((s) => (
-                      <TouchableOpacity
-                        key={s}
-                        onPress={() => setLogSpecies(s)}
-                        style={[styles.chip, logSpecies === s && styles.chipActive, { marginRight: 6 }]}
-                      >
-                        <Text style={[styles.chipText, logSpecies === s && { color: colors.white }]}>{s}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  <TextInput
-                    style={styles.logInput}
+                <View className="mb-2.5 rounded-xl bg-white/5 p-3">
+                  <Text className="mb-2 text-[12px] text-muted">어종 선택</Text>
+                  <Controller
+                    control={control}
+                    name="logSpecies"
+                    render={({ field, fieldState }) => (
+                      <>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2.5">
+                          {SPECIES_OPTIONS.map((s) => (
+                            <TouchableOpacity
+                              key={s}
+                              onPress={() => field.onChange(s)}
+                              className={`mr-1.5 ${chipClass(field.value === s)}`}
+                            >
+                              <Text className={`text-[12px] ${field.value === s ? 'text-white' : 'text-muted'}`}>{s}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                        <FieldError message={fieldState.error?.message} />
+                      </>
+                    )}
+                  />
+                  <FormTextInput
+                    control={control}
+                    name="logSize"
+                    className={LOG_INPUT}
                     placeholder="크기 (cm)"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
                     keyboardType="numeric"
-                    value={logSize}
-                    onChangeText={setLogSize}
                   />
-                  <TextInput
-                    style={styles.logInput}
-                    placeholder="장소 *"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    value={logLocation}
-                    onChangeText={setLogLocation}
-                  />
+                  <FormTextInput control={control} name="logLocation" className={LOG_INPUT} placeholder="장소 *" />
                 </View>
               )}
             </ScrollView>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={submitPost} disabled={submitting}>
+            <TouchableOpacity
+              className="mt-1 items-center rounded-xl bg-accent py-3.5"
+              onPress={handleSubmit(submitPost)}
+              disabled={submitting}
+            >
               {submitting ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <ActivityIndicator color={colors.white} style={{ marginRight: 8 }} />
-                  <Text style={styles.submitBtnText}>등록 중...</Text>
+                <View className="flex-row items-center">
+                  <ActivityIndicator color={colors.white} className="mr-2" />
+                  <Text className="text-[15px] font-semibold text-white">등록 중...</Text>
                 </View>
               ) : (
-                <Text style={styles.submitBtnText}>게시글 등록</Text>
+                <Text className="text-[15px] font-semibold text-white">게시글 등록</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -215,24 +238,3 @@ export function WritePostModal({ visible, nickname, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.oceanMid, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  chip: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textMuted, fontSize: 12 },
-  textArea: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 12, padding: 14, color: colors.white, fontSize: 14, minHeight: 100, textAlignVertical: 'top', marginBottom: 10 },
-  imagePickBtn: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 10 },
-  previewImage: { width: '100%', height: 180, borderRadius: 10 },
-  removeImageBtn: { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-end', marginTop: 6 },
-  logRegisterToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,168,38,0.08)', borderWidth: 1, borderColor: 'rgba(244,168,38,0.3)', borderRadius: 12, padding: 14, marginBottom: 10 },
-  toggleDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'transparent' },
-  toggleDotActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  logSection: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 10 },
-  logInput: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 10, padding: 12, color: colors.white, fontSize: 13, marginBottom: 8 },
-  submitBtn: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
-  submitBtnText: { color: colors.white, fontSize: 15, fontWeight: '600' },
-});

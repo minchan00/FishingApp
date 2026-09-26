@@ -23,18 +23,6 @@ export function formatKoreanDate(ymd: string): string {
   return `${Number(m[1])}. ${Number(m[2])}. ${Number(m[3])}.`;
 }
 
-/** 사용자가 입력한 크기 텍스트 → cm 숫자. 비었거나 숫자가 아니면 null */
-export function parseSize(text: string): number | null {
-  const n = parseFloat(text.trim());
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-/** 사용자가 입력한 마리수 텍스트 → 정수. 비었거나 잘못된 값이면 1 */
-export function parseCount(text: string): number {
-  const n = parseInt(text.trim(), 10);
-  return Number.isFinite(n) && n > 0 ? n : 1;
-}
-
 /** '광어 45cm x2' 형태 */
 export function formatCatch(c: Catch): string {
   return `${c.species}${c.sizeCm !== null ? ` ${c.sizeCm}cm` : ''}${c.count > 1 ? ` x${c.count}` : ''}`;

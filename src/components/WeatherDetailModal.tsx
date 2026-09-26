@@ -1,6 +1,7 @@
+import { FlashList } from '@shopify/flash-list';
 import { format, getDay, parseISO } from 'date-fns';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
   OBS_LIST, forecastTime, getConditionEmoji, isKstToday, kstHourNow, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
@@ -22,6 +23,8 @@ const formatDate = (dateStr: string) => {
 };
 
 const isToday = isKstToday;
+
+const ObsSeparator = () => <View className="h-px bg-white/[0.06]" />;
 
 export default function WeatherDetailModal({ obs, onClose }: Props) {
   const [currentObs, setCurrentObs] = useState(obs);
@@ -57,9 +60,9 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
 
   if (forecast.isPending || tideWeek.isPending || tideForecast.isPending) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View className="flex-1 bg-ocean-deep justify-center items-center">
         <ActivityIndicator color={colors.accent} size="large" />
-        <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 13 }}>
+        <Text className="text-muted mt-3 text-[13px]">
           {currentObs.name} 예보 불러오는 중...
         </Text>
       </View>
@@ -73,121 +76,134 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
   const nowHour = kstHourNow();
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-ocean-deep">
       {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-          <Text style={{ color: colors.white, fontSize: 16 }}>← 뒤로</Text>
+      <View className="px-5 pt-14 pb-3">
+        <TouchableOpacity onPress={onClose} className="mb-2">
+          <Text className="text-white text-[16px]">← 뒤로</Text>
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.title}>📅 일자별 예보</Text>
-          <TouchableOpacity onPress={() => setSearchModal(true)} style={styles.searchBtn}>
-            <Text style={styles.searchBtnText}>📍 {currentObs.name} ▾</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-white text-[20px] font-semibold">📅 일자별 예보</Text>
+          <TouchableOpacity
+            onPress={() => setSearchModal(true)}
+            className="bg-white/10 px-3 py-1.5 rounded-[20px] border border-white/20"
+          >
+            <Text className="text-accent text-[13px] font-semibold">📍 {currentObs.name} ▾</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {forecast.isError && (
-        <View style={{ alignItems: 'center', paddingVertical: 30 }}>
-          <Text style={{ color: colors.textMuted, fontSize: 13 }}>예보를 불러올 수 없어요</Text>
-          <TouchableOpacity onPress={() => forecast.refetch()} style={{ marginTop: 10 }}>
-            <Text style={{ color: colors.accent, fontSize: 13 }}>다시 시도</Text>
+        <View className="items-center py-[30px]">
+          <Text className="text-muted text-[13px]">예보를 불러올 수 없어요</Text>
+          <TouchableOpacity onPress={() => forecast.refetch()} className="mt-2.5">
+            <Text className="text-accent text-[13px]">다시 시도</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* 날짜 탭 */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayTabRow} contentContainerStyle={{ paddingHorizontal: 16 }}>
-        {days.map((day, i) => (
-          <TouchableOpacity key={day.date} onPress={() => setSelectedDay(i)} style={[styles.dayTab, selectedDay === i && styles.dayTabActive]}>
-            <Text style={styles.dayTabEmoji}>{getConditionEmoji(day.condition)}</Text>
-            <Text style={[styles.dayTabDate, selectedDay === i && { color: colors.accent, fontWeight: '600' }]}>
-              {isToday(day.date) ? '오늘' : formatDate(day.date)}
-            </Text>
-            <Text style={[styles.dayTabTemp, selectedDay === i && { color: colors.white }]}>
-              {day.tempMin}°/{day.tempMax}°
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* 날짜 탭 (며칠치뿐이라 ScrollView로 충분) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2" contentContainerClassName="px-4">
+        {days.map((day, i) => {
+          const active = selectedDay === i;
+          return (
+            <TouchableOpacity
+              key={day.date}
+              onPress={() => setSelectedDay(i)}
+              className={`items-center px-3.5 py-2.5 mr-2 rounded-[14px] border ${active ? 'border-accent bg-accent/10' : 'bg-card border-card-border'}`}
+            >
+              <Text className="text-[20px] mb-1">{getConditionEmoji(day.condition)}</Text>
+              <Text className={`text-[12px] ${active ? 'text-accent font-semibold' : 'text-muted'}`}>
+                {isToday(day.date) ? '오늘' : formatDate(day.date)}
+              </Text>
+              <Text className={`text-[11px] mt-0.5 ${active ? 'text-white' : 'text-white/50'}`}>
+                {day.tempMin}°/{day.tempMax}°
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {selectedForecast && (
           <>
             {/* 선택된 날 날씨 요약 */}
-            <View style={styles.summaryCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View className="mx-4 mb-3 bg-ocean-surface rounded-2xl p-4 border border-card-border">
+              <View className="flex-row justify-between items-center mb-3">
                 <View>
-                  <Text style={styles.summaryDate}>
+                  <Text className="text-white text-[18px] font-semibold">
                     {isToday(selectedForecast.date) ? '오늘' : formatDate(selectedForecast.date)}
                   </Text>
-                  <Text style={styles.summaryDesc}>{selectedForecast.conditionDesc}</Text>
+                  <Text className="text-muted text-[13px] mt-0.5">{selectedForecast.conditionDesc}</Text>
                 </View>
-                <Text style={{ fontSize: 48 }}>{getConditionEmoji(selectedForecast.condition)}</Text>
+                <Text className="text-[48px]">{getConditionEmoji(selectedForecast.condition)}</Text>
               </View>
-              <View style={styles.summaryStats}>
+              <View className="flex-row border-t border-card-border pt-3">
                 {[
                   { label: '최저', value: `${selectedForecast.tempMin}°C` },
                   { label: '최고', value: `${selectedForecast.tempMax}°C` },
                   { label: '바람', value: `${selectedForecast.avgWind}m/s` },
                   { label: '습도', value: `${selectedForecast.humidity}%` },
                 ].map((item, i) => (
-                  <View key={item.label} style={[styles.statItem, i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.cardBorder }]}>
-                    <Text style={styles.statLabel}>{item.label}</Text>
-                    <Text style={styles.statValue}>{item.value}</Text>
+                  <View key={item.label} className={`flex-1 items-center ${i > 0 ? 'border-l border-card-border' : ''}`}>
+                    <Text className="text-muted text-[10px]">{item.label}</Text>
+                    <Text className="text-white text-[13px] font-medium mt-0.5">{item.value}</Text>
                   </View>
                 ))}
               </View>
             </View>
 
             {/* 시간별 날씨 */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>⏰ 시간별 날씨</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            <View className="mx-4 mb-3 bg-white/5 rounded-2xl p-4 border border-card-border">
+              <Text className="text-white text-[14px] font-semibold">⏰ 시간별 날씨</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2.5">
                 {selectedForecast.hourly.map((item, i) => (
-                  <View key={i} style={styles.hourItem}>
-                    <Text style={styles.hourTime}>{forecastTime(item)}</Text>
-                    <Text style={{ fontSize: 20, marginVertical: 4 }}>{getConditionEmoji(item.weather[0]?.main)}</Text>
-                    <Text style={styles.hourTemp}>{Math.round(item.main.temp)}°</Text>
-                    <Text style={styles.hourWind}>{Math.round(item.wind.speed)}m/s</Text>
+                  <View key={i} className="items-center mr-4 min-w-[50px]">
+                    <Text className="text-muted text-[11px]">{forecastTime(item)}</Text>
+                    <Text className="text-[20px] my-1">{getConditionEmoji(item.weather[0]?.main)}</Text>
+                    <Text className="text-white text-[14px] font-semibold">{Math.round(item.main.temp)}°</Text>
+                    <Text className="text-ocean-light text-[10px] mt-0.5">{Math.round(item.wind.speed)}m/s</Text>
                   </View>
                 ))}
               </ScrollView>
             </View>
 
             {/* 조위 데이터 */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>🌊 시간별 조위</Text>
+            <View className="mx-4 mb-3 bg-white/5 rounded-2xl p-4 border border-card-border">
+              <Text className="text-white text-[14px] font-semibold">🌊 시간별 조위</Text>
               {selectedTide ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2.5">
                   {selectedTide.map((item, i) => {
                     const isCurrent = isToday(selectedForecast.date) && tideHour(item) === nowHour;
                     return (
-                      <View key={i} style={[styles.tideHourItem, isCurrent && styles.tideHourItemCurrent]}>
-                        <Text style={[styles.tideHourTime, isCurrent && { color: colors.accent }]}>{tideTime(item)}</Text>
-                        <Text style={styles.tideHourActual}>{item.bscTdlvHgt ? `${item.bscTdlvHgt}` : '-'}</Text>
-                        <Text style={styles.tideHourPred}>{item.tdlvHgt != null ? Math.round(Number(item.tdlvHgt)) : '-'}</Text>
-                        <Text style={styles.tideHourUnit}>cm</Text>
+                      <View
+                        key={i}
+                        className={`items-center mr-3 px-2 py-1.5 rounded-lg min-w-[50px] ${isCurrent ? 'bg-accent/15 border border-accent' : ''}`}
+                      >
+                        <Text className={`text-[11px] mb-1 ${isCurrent ? 'text-accent' : 'text-muted'}`}>{tideTime(item)}</Text>
+                        <Text className="text-white text-[14px] font-semibold">{item.bscTdlvHgt ? `${item.bscTdlvHgt}` : '-'}</Text>
+                        <Text className="text-ocean-light text-[12px]">{item.tdlvHgt != null ? Math.round(Number(item.tdlvHgt)) : '-'}</Text>
+                        <Text className="text-white/40 text-[10px]">cm</Text>
                       </View>
                     );
                   })}
                 </ScrollView>
               ) : tideEvents.length === 0 ? (
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', paddingVertical: 16 }}>
+                <Text className="text-white/40 text-[12px] text-center py-4">
                   조위 데이터가 없어요
                 </Text>
               ) : null}
               {tideEvents.length > 0 && (
-                <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>🌊 만조 / 간조</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                <View className="mt-3.5 pt-3 border-t border-white/[0.08]">
+                  <Text className="text-muted text-[11px] mb-2">🌊 만조 / 간조</Text>
+                  <View className="flex-row flex-wrap">
                     {tideEvents.map((e, i) => (
-                      <View key={i} style={{ alignItems: 'center', marginRight: 20, marginBottom: 4 }}>
-                        <Text style={{ color: e.type === '만조' ? colors.oceanLight : colors.textMuted, fontSize: 11, fontWeight: '600' }}>
+                      <View key={i} className="items-center mr-5 mb-1">
+                        <Text className={`text-[11px] font-semibold ${e.type === '만조' ? 'text-ocean-light' : 'text-muted'}`}>
                           {e.type === '만조' ? '🔵' : '⚪'} {e.type}
                         </Text>
-                        <Text style={{ color: colors.white, fontSize: 13, fontWeight: '600', marginTop: 2 }}>{e.time}</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>{e.height}cm</Text>
+                        <Text className="text-white text-[13px] font-semibold mt-0.5">{e.time}</Text>
+                        <Text className="text-white/50 text-[10px]">{e.height}cm</Text>
                       </View>
                     ))}
                   </View>
@@ -196,49 +212,57 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
             </View>
           </>
         )}
-        <View style={{ height: 30 }} />
+        <View className="h-[30px]" />
       </ScrollView>
 
       {/* 지역 검색 모달 */}
       <Modal visible={searchModal} animationType="slide" transparent onRequestClose={() => setSearchModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>📍 지역 선택</Text>
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#0f3a50] rounded-t-3xl p-5 pb-10">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-white text-[16px] font-bold">📍 지역 선택</Text>
               <TouchableOpacity onPress={() => { setSearchModal(false); setSearchQuery(''); }}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 22, lineHeight: 24 }}>✕</Text>
+                <Text className="text-white/60 text-[22px] leading-[24px]">✕</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.currentLocBtn} onPress={selectCurrentLocation} disabled={locating}>
+            <TouchableOpacity
+              className="flex-row items-center bg-accent/[0.12] rounded-xl py-3 px-3.5 mb-3 border border-accent/30"
+              onPress={selectCurrentLocation}
+              disabled={locating}
+            >
               {locating ? (
-                <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
+                <ActivityIndicator size="small" color={colors.accent} className="mr-2" />
               ) : (
-                <Text style={{ fontSize: 16, marginRight: 8 }}>📡</Text>
+                <Text className="text-[16px] mr-2">📡</Text>
               )}
-              <Text style={styles.currentLocText}>{locating ? '위치 찾는 중...' : '현재 위치 사용'}</Text>
+              <Text className="text-accent text-[14px] font-semibold">{locating ? '위치 찾는 중...' : '현재 위치 사용'}</Text>
             </TouchableOpacity>
             <TextInput
-              style={styles.searchInput}
+              className="bg-white/[0.08] rounded-xl px-3.5 py-2.5 text-white text-[14px] mb-3 border border-white/15"
               placeholder="지역 이름 검색..."
               placeholderTextColor="rgba(255,255,255,0.35)"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
-            <FlatList
+            <FlashList
               data={filteredObs}
               keyExtractor={(item) => item.code}
+              extraData={currentObs.code}
               renderItem={({ item }) => {
                 const active = item.code === currentObs.code;
                 return (
-                  <TouchableOpacity style={[styles.obsItem, active && styles.obsItemActive]} onPress={() => selectObs(item)}>
-                    <Text style={[styles.obsItemText, active && { color: colors.accent, fontWeight: '700' }]}>
+                  <TouchableOpacity
+                    className={`py-3.5 px-2 ${active ? 'bg-accent/10 rounded-lg' : ''}`}
+                    onPress={() => selectObs(item)}
+                  >
+                    <Text className={`text-[15px] ${active ? 'text-accent font-bold' : 'text-white/[0.85]'}`}>
                       {active ? '✓ ' : ''}{item.name}
                     </Text>
                   </TouchableOpacity>
                 );
               }}
-              ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />}
+              ItemSeparatorComponent={ObsSeparator}
               style={{ maxHeight: 360 }}
             />
           </View>
@@ -247,47 +271,3 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.oceanDeep },
-  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
-  backBtn: { marginBottom: 8 },
-  title: { color: colors.white, fontSize: 20, fontWeight: '600' },
-  searchBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  searchBtnText: { color: colors.accent, fontSize: 13, fontWeight: '600' },
-  dayTabRow: { marginBottom: 8 },
-  dayTab: { alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, marginRight: 8, borderRadius: 14, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder },
-  dayTabActive: { borderColor: colors.accent, backgroundColor: 'rgba(244,168,38,0.1)' },
-  dayTabEmoji: { fontSize: 20, marginBottom: 4 },
-  dayTabDate: { color: colors.textMuted, fontSize: 12 },
-  dayTabTemp: { color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 },
-  summaryCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.oceanSurface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.cardBorder },
-  summaryDate: { color: colors.white, fontSize: 18, fontWeight: '600' },
-  summaryDesc: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  summaryStats: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: 12 },
-  statItem: { flex: 1, alignItems: 'center' },
-  statLabel: { color: colors.textMuted, fontSize: 10 },
-  statValue: { color: colors.white, fontSize: 13, fontWeight: '500', marginTop: 2 },
-  sectionCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.cardBorder },
-  sectionTitle: { color: colors.white, fontSize: 14, fontWeight: '600' },
-  hourItem: { alignItems: 'center', marginRight: 16, minWidth: 50 },
-  hourTime: { color: colors.textMuted, fontSize: 11 },
-  hourTemp: { color: colors.white, fontSize: 14, fontWeight: '600' },
-  hourWind: { color: colors.oceanLight, fontSize: 10, marginTop: 2 },
-  tideHourItem: { alignItems: 'center', marginRight: 12, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, minWidth: 50 },
-  tideHourItemCurrent: { backgroundColor: 'rgba(244,168,38,0.15)', borderWidth: 1, borderColor: colors.accent },
-  tideHourTime: { color: colors.textMuted, fontSize: 11, marginBottom: 4 },
-  tideHourActual: { color: colors.white, fontSize: 14, fontWeight: '600' },
-  tideHourPred: { color: colors.oceanLight, fontSize: 12 },
-  tideHourUnit: { color: 'rgba(255,255,255,0.4)', fontSize: 10 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalBox: { backgroundColor: '#0f3a50', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  searchInput: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: colors.white, fontSize: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  currentLocBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,168,38,0.12)', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(244,168,38,0.3)' },
-  currentLocText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  obsItem: { paddingVertical: 14, paddingHorizontal: 8 },
-  obsItemActive: { backgroundColor: 'rgba(244,168,38,0.1)', borderRadius: 8 },
-  obsItemText: { color: 'rgba(255,255,255,0.85)', fontSize: 15 },
-});

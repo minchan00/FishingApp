@@ -1,15 +1,17 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AnalysisResult } from '@/components/fish/AnalysisResult';
 import { DogamMemoModal } from '@/components/fish/DogamMemoModal';
-import { styles } from '@/components/fish/fishStyles';
 import { searchTaxa, type TaxonResult } from '@/components/fish/inaturalist';
 import { MyDogamTab } from '@/components/fish/MyDogamTab';
 import { RegisterCatchModal, type RegisterDraft } from '@/components/fish/RegisterCatchModal';
 import { SpeciesDetailModal } from '@/components/fish/SpeciesDetailModal';
+import { CloseX, cls, PLACEHOLDER_COLOR, SheetModal } from '@/components/fish/ui';
 import { identifyFish } from '@/data/ai';
 import { useDogam } from '@/hooks/queries';
 import { colors } from '@/theme/colors';
@@ -127,20 +129,23 @@ export default function FishScreen() {
     setRegisterDraft({ name: speciesName ?? '', size: '', location: locationStr, memo: '' });
   };
 
+  const tabBtnClass = (tab: Tab) => `flex-1 py-[8px] items-center rounded-[10px]${activeTab === tab ? ' bg-accent' : ''}`;
+  const tabTextClass = (tab: Tab) => `text-[13px] font-medium ${activeTab === tab ? 'text-white' : 'text-muted'}`;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🐟 어종 도감</Text>
-        <Text style={styles.sub}>AI 분석 · 자동 등록</Text>
+    <View className="flex-1 bg-ocean-deep">
+      <View className="px-[20px] pt-[56px] pb-[8px]">
+        <Text className="text-white text-[20px] font-semibold">🐟 어종 도감</Text>
+        <Text className="text-muted text-[12px] mt-[2px]">AI 분석 · 자동 등록</Text>
       </View>
 
       {/* 탭 */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity style={[styles.tabBtn, activeTab === '전체' && styles.tabBtnActive]} onPress={() => setActiveTab('전체')}>
-          <Text style={[styles.tabText, activeTab === '전체' && styles.tabTextActive]}>📖 전체 도감</Text>
+      <View className="flex-row mx-[16px] mb-[12px] bg-card rounded-[12px] p-[4px]">
+        <TouchableOpacity className={tabBtnClass('전체')} onPress={() => setActiveTab('전체')}>
+          <Text className={tabTextClass('전체')}>📖 전체 도감</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabBtn, activeTab === '내도감' && styles.tabBtnActive]} onPress={() => setActiveTab('내도감')}>
-          <Text style={[styles.tabText, activeTab === '내도감' && styles.tabTextActive]}>
+        <TouchableOpacity className={tabBtnClass('내도감')} onPress={() => setActiveTab('내도감')}>
+          <Text className={tabTextClass('내도감')}>
             🏆 내 도감 {myFishList.length > 0 ? `(${myFishList.length})` : ''}
           </Text>
         </TouchableOpacity>
@@ -149,92 +154,110 @@ export default function FishScreen() {
       {activeTab === '전체' && (
         <>
           {/* AI 분석 */}
-          <View style={styles.aiSection}>
-            <Text style={styles.aiTitle}>📸 AI 어종 분석 & 자동 등록</Text>
-            <Text style={styles.aiSub}>사진을 찍으면 AI가 어종을 분석하고 도감 + 일지에 자동 등록해줘요!</Text>
-            <View style={styles.btnRow}>
-              <TouchableOpacity style={styles.cameraBtn} onPress={takePhoto} activeOpacity={0.8}>
-                <Text style={styles.cameraBtnText}>📷 카메라</Text>
+          <View className="mx-[16px] mb-[10px] bg-[rgba(42,159,196,0.15)] border border-ocean-light rounded-[16px] p-[14px]">
+            <Text className="text-white text-[14px] font-semibold mb-[4px]">📸 AI 어종 분석 & 자동 등록</Text>
+            <Text className="text-muted text-[11px] leading-[16px] mb-[12px]">사진을 찍으면 AI가 어종을 분석하고 도감 + 일지에 자동 등록해줘요!</Text>
+            <View className="flex-row">
+              <TouchableOpacity className="flex-1 bg-accent rounded-[10px] py-[10px] items-center mr-[8px]" onPress={takePhoto} activeOpacity={0.8}>
+                <Text className="text-white text-[13px] font-semibold">📷 카메라</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.galleryBtn} onPress={pickImage} activeOpacity={0.8}>
-                <Text style={styles.galleryBtnText}>🖼️ 갤러리</Text>
+              <TouchableOpacity
+                className="flex-1 bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] rounded-[10px] py-[10px] items-center"
+                onPress={pickImage}
+                activeOpacity={0.8}
+              >
+                <Text className="text-white text-[13px] font-semibold">🖼️ 갤러리</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* 검색 */}
-          <View style={styles.searchWrap}>
-            <Text style={{ fontSize: 14, color: colors.textMuted }}>🔍</Text>
-            <TextInput style={styles.searchInput} placeholder="어종 이름 검색..." placeholderTextColor="rgba(255,255,255,0.4)" value={search} onChangeText={handleSearch} />
+          <View className="flex-row items-center bg-card border border-card-border rounded-[12px] mx-[16px] mb-[8px] px-[14px] py-[10px]">
+            <Text className="text-[14px] text-muted">🔍</Text>
+            <TextInput
+              className="flex-1 text-white text-[13px] ml-[8px]"
+              placeholder="어종 이름 검색..."
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              value={search}
+              onChangeText={handleSearch}
+            />
             {search ? (
               <TouchableOpacity onPress={clearSearch}>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16 }}>✕</Text>
+                <Text className="text-[rgba(255,255,255,0.5)] text-[16px]">✕</Text>
               </TouchableOpacity>
             ) : null}
           </View>
 
           {search ? (
-            <View style={{ flex: 1 }}>
+            <View className="flex-1">
               {taxa.isLoading || (search.trim() !== keyword) ? (
-                <View style={styles.centerWrap}>
+                <View className={cls.centerWrap}>
                   <ActivityIndicator color={colors.accent} size="large" />
-                  <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 13 }}>검색 중...</Text>
+                  <Text className="text-muted mt-[12px] text-[13px]">검색 중...</Text>
                 </View>
               ) : searchResults.length > 0 ? (
-                <FlatList
+                <FlashList
                   data={searchResults}
                   keyExtractor={(item) => item.id}
                   contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.resultCard} onPress={() => setSelectedFish(item)} activeOpacity={0.8}>
+                    <TouchableOpacity
+                      className="flex-row items-center bg-card border border-card-border rounded-[14px] p-[12px] mb-[10px]"
+                      onPress={() => setSelectedFish(item)}
+                      activeOpacity={0.8}
+                    >
                       {item.photoUrl ? (
-                        <Image source={{ uri: item.photoUrl }} style={styles.thumbnail} resizeMode="cover" />
+                        <Image source={{ uri: item.photoUrl }} style={{ width: 60, height: 60, borderRadius: 10 }} contentFit="cover" transition={150} />
                       ) : (
-                        <View style={[styles.thumbnail, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                          <Text style={{ fontSize: 24 }}>🐟</Text>
+                        <View className="w-[60px] h-[60px] rounded-[10px] items-center justify-center bg-[rgba(255,255,255,0.05)]">
+                          <Text className="text-[24px]">🐟</Text>
                         </View>
                       )}
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={{ color: colors.white, fontSize: 15, fontWeight: '600' }}>{item.name}</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontStyle: 'italic', marginTop: 2 }}>{item.scientific}</Text>
+                      <View className="flex-1 ml-[12px]">
+                        <Text className="text-white text-[15px] font-semibold">{item.name}</Text>
+                        <Text className="text-[rgba(255,255,255,0.5)] text-[11px] italic mt-[2px]">{item.scientific}</Text>
                         {item.class ? (
-                          <View style={[styles.taxonTag, { marginTop: 6, alignSelf: 'flex-start' }]}>
-                            <Text style={styles.taxonText}>{item.class}</Text>
+                          <View className="bg-[rgba(42,159,196,0.2)] border border-ocean-light rounded-[6px] px-[8px] py-[3px] mt-[6px] self-start">
+                            <Text className="text-ocean-light text-[11px]">{item.class}</Text>
                           </View>
                         ) : null}
                       </View>
-                      <Text style={{ color: colors.oceanLight, fontSize: 18 }}>→</Text>
+                      <Text className="text-ocean-light text-[18px]">→</Text>
                     </TouchableOpacity>
                   )}
-                  ListFooterComponent={<View style={{ height: 20 }} />}
+                  ListFooterComponent={<View className="h-[20px]" />}
                 />
               ) : (
-                <View style={styles.centerWrap}>
-                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center' }}>"{search}" 검색 결과가 없어요</Text>
+                <View className={cls.centerWrap}>
+                  <Text className="text-[40px] mb-[12px]">🔍</Text>
+                  <Text className="text-muted text-[14px] text-center">"{search}" 검색 결과가 없어요</Text>
                 </View>
               )}
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ paddingHorizontal: 16, marginTop: 4 }}>
+              <View className="px-[16px] mt-[4px]">
                 {RECOMMENDED.map((cat) => (
-                  <View key={cat.category} style={{ marginBottom: 20 }}>
-                    <Text style={styles.catTitle}>{cat.category}</Text>
+                  <View key={cat.category} className="mb-[20px]">
+                    <Text className="text-white text-[14px] font-semibold mb-[10px]">{cat.category}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       {cat.species.map((name) => (
-                        <TouchableOpacity key={name} style={styles.recommendChip} onPress={() => searchRecommended(name)}>
-                          <Text style={styles.recommendChipText}>{name}</Text>
+                        <TouchableOpacity
+                          key={name}
+                          className="bg-card border border-[rgba(255,255,255,0.15)] rounded-[20px] px-[14px] py-[8px] mr-[8px]"
+                          onPress={() => searchRecommended(name)}
+                        >
+                          <Text className="text-white text-[13px]">{name}</Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
                   </View>
                 ))}
-                <View style={styles.tipBox}>
-                  <Text style={styles.tipText}>💡 카메라로 물고기를 찍으면{'\n'}AI가 자동으로 분석 & 도감 + 일지에 등록해줘요!</Text>
+                <View className="bg-[rgba(42,159,196,0.1)] border border-[rgba(42,159,196,0.3)] rounded-[12px] p-[14px] mt-[8px]">
+                  <Text className="text-muted text-[12px] leading-[20px] text-center">💡 카메라로 물고기를 찍으면{'\n'}AI가 자동으로 분석 & 도감 + 일지에 등록해줘요!</Text>
                 </View>
               </View>
-              <View style={{ height: 30 }} />
+              <View className="h-[30px]" />
             </ScrollView>
           )}
         </>
@@ -246,32 +269,33 @@ export default function FishScreen() {
       )}
 
       {/* AI 분석 모달 */}
-      <Modal visible={aiModal} transparent animationType="slide" onRequestClose={() => setAiModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🤖 AI 어종 분석</Text>
-              <TouchableOpacity onPress={() => setAiModal(false)}>
-                <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {image ? <Image source={{ uri: image }} style={styles.previewImage} resizeMode="cover" /> : null}
-            {identify.isPending ? (
-              <View style={styles.centerWrap}>
-                <ActivityIndicator color={colors.accent} size="large" />
-                <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 13 }}>AI가 분석하고 있어요...</Text>
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
-                <AnalysisResult analysis={identify.data ?? null} error={identify.error} onRegister={openRegisterModal} />
-              </ScrollView>
-            )}
-            <TouchableOpacity style={[styles.closeBtn, { marginTop: 8 }]} onPress={() => setAiModal(false)}>
-              <Text style={styles.closeBtnText}>닫기</Text>
-            </TouchableOpacity>
-          </View>
+      <SheetModal visible={aiModal} onClose={() => setAiModal(false)}>
+        <View className={cls.modalHeader}>
+          <Text className={cls.modalTitle}>🤖 AI 어종 분석</Text>
+          <CloseX onPress={() => setAiModal(false)} />
         </View>
-      </Modal>
+        {image ? (
+          <Image
+            source={{ uri: image }}
+            style={{ width: '100%', height: 150, borderRadius: 12, marginBottom: 12 }}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : null}
+        {identify.isPending ? (
+          <View className={cls.centerWrap}>
+            <ActivityIndicator color={colors.accent} size="large" />
+            <Text className="text-muted mt-[12px] text-[13px]">AI가 분석하고 있어요...</Text>
+          </View>
+        ) : (
+          <ScrollView className="max-h-[340px]" showsVerticalScrollIndicator={false}>
+            <AnalysisResult analysis={identify.data ?? null} error={identify.error} onRegister={openRegisterModal} />
+          </ScrollView>
+        )}
+        <TouchableOpacity className={`${cls.closeBtn} mt-[8px]`} onPress={() => setAiModal(false)}>
+          <Text className={cls.btnText}>닫기</Text>
+        </TouchableOpacity>
+      </SheetModal>
 
       <RegisterCatchModal
         draft={registerDraft}

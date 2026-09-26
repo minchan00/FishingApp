@@ -2,42 +2,54 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { SPECIES_OPTIONS, WEATHER_OPTIONS } from '@/constants/fishing';
 import { useCreatePost, useSaveLog } from '@/hooks/queries';
+import { logFormSchema, type LogFormOutput, type LogFormValues } from '@/schemas/log';
 import { colors } from '@/theme/colors';
-import type { Catch, FishingLog } from '@/types/models';
-import { formatCatch, isValidYmd, parseCount, parseSize, todayYmd } from './format';
+import type { FishingLog } from '@/types/models';
+import { formatCatch, todayYmd } from './format';
+import { FieldError, FormTextInput } from './FormTextInput';
 import { pickImageFromLibrary } from './pickImage';
 
-/** 입력 중인 조과. 크기·마리수는 입력창 텍스트 그대로 들고 있다가 저장할 때 숫자로 바꾼다. */
-type CatchDraft = { species: string; size: string; count: string };
-
-type LogForm = {
-  fishedOn: string;
-  location: string;
-  weather: string;
-  duration: string;
-  memo: string;
-};
-
-const emptyForm = (): LogForm => ({
+const emptyForm = (): LogFormValues => ({
   fishedOn: todayYmd(),
   location: '',
   weather: WEATHER_OPTIONS[0],
   duration: '',
   memo: '',
+  imageUri: null,
+  catches: [],
 });
+
+const formFromLog = (log: FishingLog): LogFormValues => ({
+  fishedOn: log.fishedOn,
+  location: log.location,
+  weather: log.weather,
+  duration: log.duration,
+  memo: log.memo,
+  // 기존 사진의 공개 URL을 그대로 넘기면 데이터 레이어가 기존 사진을 유지한다
+  imageUri: log.imageUrl,
+  catches: log.catches.map((c) => ({
+    species: c.species,
+    size: c.sizeCm !== null ? String(c.sizeCm) : '',
+    count: String(c.count),
+  })),
+});
+
+const INPUT = 'mb-2.5 rounded-xl border border-card-border bg-card p-3.5 text-[14px] text-white';
+const chipClass = (active: boolean) =>
+  `rounded-[20px] border px-3 py-[5px] ${active ? 'border-accent bg-accent' : 'border-card-border bg-card'}`;
 
 type Props = {
   visible: boolean;
@@ -50,72 +62,31 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
   const saveLog = useSaveLog();
   const createPost = useCreatePost();
 
-  const [form, setForm] = useState<LogForm>(emptyForm);
-  const [catches, setCatches] = useState<CatchDraft[]>([]);
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const { control, handleSubmit, reset, setValue, formState } = useForm<LogFormValues, unknown, LogFormOutput>({
+    resolver: zodResolver(logFormSchema),
+    defaultValues: emptyForm(),
+  });
+  const { fields, append, remove } = useFieldArray({ control, name: 'catches' });
+  const imageUri = useWatch({ control, name: 'imageUri' });
   const [shareToComm, setShareToComm] = useState(false);
 
   // 모달이 열릴 때마다 폼을 채우거나 비운다
   useEffect(() => {
     if (!visible) return;
-    if (editingLog) {
-      setForm({
-        fishedOn: editingLog.fishedOn,
-        location: editingLog.location,
-        weather: editingLog.weather,
-        duration: editingLog.duration,
-        memo: editingLog.memo,
-      });
-      setCatches(
-        editingLog.catches.map((c) => ({
-          species: c.species,
-          size: c.sizeCm !== null ? String(c.sizeCm) : '',
-          count: String(c.count),
-        })),
-      );
-      // 기존 사진의 공개 URL을 그대로 넘기면 데이터 레이어가 기존 사진을 유지한다
-      setImageUri(editingLog.imageUrl);
-    } else {
-      setForm(emptyForm());
-      setCatches([]);
-      setImageUri(null);
-    }
+    reset(editingLog ? formFromLog(editingLog) : emptyForm());
     setShareToComm(false);
-  }, [visible, editingLog]);
+  }, [visible, editingLog, reset]);
 
   const submitting = saveLog.isPending || createPost.isPending;
 
-  const addCatch = () => setCatches([...catches, { species: '광어', size: '', count: '1' }]);
-  const updateCatch = (idx: number, field: keyof CatchDraft, value: string) =>
-    setCatches(catches.map((c, i) => (i === idx ? { ...c, [field]: value } : c)));
-  const removeCatch = (idx: number) => setCatches(catches.filter((_, i) => i !== idx));
-
   const pickImage = async () => {
     const uri = await pickImageFromLibrary();
-    if (uri) setImageUri(uri);
+    if (uri) setValue('imageUri', uri);
   };
 
-  const submitLog = async () => {
-    if (!form.location.trim()) {
-      Alert.alert('알림', '장소를 입력해주세요!');
-      return;
-    }
-    if (!isValidYmd(form.fishedOn)) {
-      Alert.alert('알림', '날짜를 YYYY-MM-DD 형식으로 입력해주세요!');
-      return;
-    }
-
-    const parsedCatches: Catch[] = catches.map((c) => ({
-      species: c.species,
-      sizeCm: parseSize(c.size),
-      count: parseCount(c.count),
-    }));
-
+  const submitLog = async (input: LogFormOutput) => {
     try {
-      await saveLog.mutateAsync({
-        input: { ...form, imageUri, catches: parsedCatches },
-        logId: editingLog?.id,
-      });
+      await saveLog.mutateAsync({ input, logId: editingLog?.id });
     } catch (e) {
       console.error('일지 저장 실패:', e);
       Alert.alert('오류', '일지 저장에 실패했어요.');
@@ -123,10 +94,10 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
     }
 
     if (!editingLog && shareToComm) {
-      const speciesText = parsedCatches.map(formatCatch).join(', ');
-      const content = `📍 ${form.location}${speciesText ? `\n🐟 ${speciesText}` : ''}${form.memo ? `\n\n${form.memo}` : ''}`;
+      const speciesText = input.catches.map(formatCatch).join(', ');
+      const content = `📍 ${input.location}${speciesText ? `\n🐟 ${speciesText}` : ''}${input.memo ? `\n\n${input.memo}` : ''}`;
       try {
-        await createPost.mutateAsync({ category: '인증샷', content, imageUri });
+        await createPost.mutateAsync({ category: '인증샷', content, imageUri: input.imageUri });
       } catch (e) {
         console.error('커뮤니티 공유 실패:', e);
         Alert.alert('알림', '일지는 저장됐지만 커뮤니티 공유에 실패했어요.');
@@ -138,137 +109,161 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingLog ? '✏️ 낚시 일지 수정' : '📔 낚시 일지 작성'}</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        <View className="flex-1 justify-end bg-black/70">
+          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="flex-1 text-[16px] font-semibold text-white">
+                {editingLog ? '✏️ 낚시 일지 수정' : '📔 낚시 일지 작성'}
+              </Text>
               <TouchableOpacity onPress={onClose}>
-                <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
+                <Text className="text-[20px] text-muted">✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <TextInput
-                style={styles.input}
-                placeholder="날짜 (YYYY-MM-DD)"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={form.fishedOn}
-                onChangeText={(t) => setForm({ ...form, fishedOn: t })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="장소 *"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={form.location}
-                onChangeText={(t) => setForm({ ...form, location: t })}
-              />
-              <TextInput
-                style={styles.input}
+              <FormTextInput control={control} name="fishedOn" className={INPUT} placeholder="날짜 (YYYY-MM-DD)" />
+              <FormTextInput control={control} name="location" className={INPUT} placeholder="장소 *" />
+              <FormTextInput
+                control={control}
+                name="duration"
+                className={INPUT}
                 placeholder="낚시 시간 (시간)"
-                placeholderTextColor="rgba(255,255,255,0.4)"
                 keyboardType="numeric"
-                value={form.duration}
-                onChangeText={(t) => setForm({ ...form, duration: t })}
               />
 
-              <Text style={styles.inputLabel}>날씨</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {WEATHER_OPTIONS.map((w) => (
-                  <TouchableOpacity
-                    key={w}
-                    onPress={() => setForm({ ...form, weather: w })}
-                    style={[styles.chip, form.weather === w && styles.chipActive, { marginRight: 8 }]}
-                  >
-                    <Text style={[styles.chipText, form.weather === w && { color: colors.white }]}>{w}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={styles.inputLabel}>🎣 어획 기록</Text>
-                <TouchableOpacity onPress={addCatch} style={styles.addCatchBtn}>
-                  <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>+ 추가</Text>
-                </TouchableOpacity>
-              </View>
-              {catches.map((c, i) => (
-                <View key={i} style={styles.catchRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-                    {SPECIES_OPTIONS.map((s) => (
-                      <TouchableOpacity
-                        key={s}
-                        onPress={() => updateCatch(i, 'species', s)}
-                        style={[styles.chip, c.species === s && styles.chipActive, { marginRight: 6 }]}
-                      >
-                        <Text style={[styles.chipText, c.species === s && { color: colors.white, fontSize: 11 }]}>{s}</Text>
+              <Text className="mb-2 text-[12px] text-muted">날씨</Text>
+              <Controller
+                control={control}
+                name="weather"
+                render={({ field }) => (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                    {WEATHER_OPTIONS.map((w) => (
+                      <TouchableOpacity key={w} onPress={() => field.onChange(w)} className={`mr-2 ${chipClass(field.value === w)}`}>
+                        <Text className={`text-[12px] ${field.value === w ? 'text-white' : 'text-muted'}`}>{w}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
-                  <View style={{ flexDirection: 'row' }}>
-                    <TextInput
-                      style={[styles.input, { flex: 1, marginRight: 8 }]}
-                      placeholder="크기(cm)"
-                      placeholderTextColor="rgba(255,255,255,0.4)"
-                      keyboardType="numeric"
-                      value={c.size}
-                      onChangeText={(t) => updateCatch(i, 'size', t)}
-                    />
-                    <TextInput
-                      style={[styles.input, { width: 70, marginRight: 8 }]}
-                      placeholder="마리수"
-                      placeholderTextColor="rgba(255,255,255,0.4)"
-                      keyboardType="numeric"
-                      value={c.count}
-                      onChangeText={(t) => updateCatch(i, 'count', t)}
-                    />
-                    <TouchableOpacity onPress={() => removeCatch(i)} style={styles.removeCatchBtn}>
-                      <Text style={{ color: colors.accent2, fontSize: 18 }}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                )}
+              />
 
-              <TextInput
-                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              <View className="mb-2 flex-row items-center justify-between">
+                <Text className="mb-2 text-[12px] text-muted">🎣 어획 기록</Text>
+                <TouchableOpacity
+                  onPress={() => append({ species: '광어', size: '', count: '1' })}
+                  className="rounded-lg border border-accent bg-accent/15 px-3 py-[5px]"
+                >
+                  <Text className="text-[13px] font-semibold text-accent">+ 추가</Text>
+                </TouchableOpacity>
+              </View>
+              {fields.map((f, i) => {
+                const rowErrors = formState.errors.catches?.[i];
+                return (
+                  <View key={f.id} className="mb-2.5 rounded-xl bg-white/5 p-2.5">
+                    <Controller
+                      control={control}
+                      name={`catches.${i}.species`}
+                      render={({ field }) => (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-1.5">
+                          {SPECIES_OPTIONS.map((s) => (
+                            <TouchableOpacity
+                              key={s}
+                              onPress={() => field.onChange(s)}
+                              className={`mr-1.5 ${chipClass(field.value === s)}`}
+                            >
+                              <Text className={field.value === s ? 'text-[11px] text-white' : 'text-[12px] text-muted'}>{s}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                    />
+                    <View className="flex-row">
+                      <FormTextInput
+                        control={control}
+                        name={`catches.${i}.size`}
+                        showError={false}
+                        className={`${INPUT} mr-2 flex-1`}
+                        placeholder="크기(cm)"
+                        keyboardType="numeric"
+                      />
+                      <FormTextInput
+                        control={control}
+                        name={`catches.${i}.count`}
+                        showError={false}
+                        className={`${INPUT} mr-2 w-[70px]`}
+                        placeholder="마리수"
+                        keyboardType="numeric"
+                      />
+                      <TouchableOpacity onPress={() => remove(i)} className="justify-center px-2">
+                        <Text className="text-[18px] text-accent-2">✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <FieldError message={rowErrors?.species?.message} />
+                    <FieldError message={rowErrors?.size?.message} />
+                    <FieldError message={rowErrors?.count?.message} />
+                  </View>
+                );
+              })}
+
+              <FormTextInput
+                control={control}
+                name="memo"
+                className={`${INPUT} h-20`}
+                style={{ textAlignVertical: 'top' }}
                 placeholder="메모 (날씨, 미끼, 포인트 등)"
-                placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
-                value={form.memo}
-                onChangeText={(t) => setForm({ ...form, memo: t })}
               />
 
               {/* 사진 추가 */}
-              <TouchableOpacity style={styles.imagePickBtn} onPress={pickImage}>
-                <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                  {imageUri ? '📷 사진 변경' : '📷 사진 추가 (선택)'}
-                </Text>
+              <TouchableOpacity
+                className="mb-2.5 items-center rounded-xl border border-white/15 bg-card p-3.5"
+                onPress={pickImage}
+              >
+                <Text className="text-[13px] text-muted">{imageUri ? '📷 사진 변경' : '📷 사진 추가 (선택)'}</Text>
               </TouchableOpacity>
               {imageUri && (
-                <View style={{ marginBottom: 12 }}>
-                  <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
-                  <TouchableOpacity onPress={() => setImageUri(null)} style={styles.removeImageBtn}>
-                    <Text style={{ color: colors.white, fontSize: 11 }}>✕ 사진 제거</Text>
+                <View className="mb-3">
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={{ width: '100%', height: 180, borderRadius: 10 }}
+                    contentFit="cover"
+                    transition={150}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setValue('imageUri', null)}
+                    className="mt-1.5 self-end rounded-md bg-black/50 px-2.5 py-1"
+                  >
+                    <Text className="text-[11px] text-white">✕ 사진 제거</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {/* 커뮤니티 공유 (수정 모드에서는 숨김) */}
               {!editingLog && (
-                <TouchableOpacity style={styles.shareToggle} onPress={() => setShareToComm(!shareToComm)}>
-                  <View style={[styles.toggleDot, shareToComm && styles.toggleDotActive]} />
-                  <Text style={{ color: shareToComm ? colors.accent : colors.textMuted, fontSize: 13, marginLeft: 10 }}>
+                <TouchableOpacity
+                  className="mb-2.5 flex-row items-center rounded-xl border border-accent/30 bg-accent/[0.08] p-3.5"
+                  onPress={() => setShareToComm(!shareToComm)}
+                >
+                  <View
+                    className={`h-5 w-5 rounded-full border-2 ${shareToComm ? 'border-accent bg-accent' : 'border-white/30'}`}
+                  />
+                  <Text className={`ml-2.5 text-[13px] ${shareToComm ? 'text-accent' : 'text-muted'}`}>
                     👥 커뮤니티 인증샷에도 공유하기
                   </Text>
                 </TouchableOpacity>
               )}
             </ScrollView>
-            <TouchableOpacity style={styles.submitBtn} onPress={submitLog} disabled={submitting}>
+            <TouchableOpacity
+              className="mt-1 items-center rounded-xl bg-accent py-3.5"
+              onPress={handleSubmit(submitLog)}
+              disabled={submitting}
+            >
               {submitting ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <ActivityIndicator color={colors.white} style={{ marginRight: 8 }} />
-                  <Text style={styles.submitBtnText}>저장 중...</Text>
+                <View className="flex-row items-center">
+                  <ActivityIndicator color={colors.white} className="mr-2" />
+                  <Text className="text-[15px] font-semibold text-white">저장 중...</Text>
                 </View>
               ) : (
-                <Text style={styles.submitBtnText}>{editingLog ? '수정 저장' : '일지 등록'}</Text>
+                <Text className="text-[15px] font-semibold text-white">{editingLog ? '수정 저장' : '일지 등록'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -277,26 +272,3 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.oceanMid, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: colors.white, fontSize: 16, fontWeight: '600', flex: 1 },
-  input: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 12, padding: 14, color: colors.white, fontSize: 14, marginBottom: 10 },
-  inputLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 8 },
-  chip: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textMuted, fontSize: 12 },
-  catchRow: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 10, marginBottom: 10 },
-  addCatchBtn: { backgroundColor: 'rgba(244,168,38,0.15)', borderWidth: 1, borderColor: colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-  removeCatchBtn: { justifyContent: 'center', paddingHorizontal: 8 },
-  imagePickBtn: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 10 },
-  previewImage: { width: '100%', height: 180, borderRadius: 10 },
-  removeImageBtn: { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-end', marginTop: 6 },
-  shareToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,168,38,0.08)', borderWidth: 1, borderColor: 'rgba(244,168,38,0.3)', borderRadius: 12, padding: 14, marginBottom: 10 },
-  toggleDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  toggleDotActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  submitBtn: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
-  submitBtnText: { color: colors.white, fontSize: 15, fontWeight: '600' },
-});

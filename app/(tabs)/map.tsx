@@ -1,12 +1,13 @@
 import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NaverMapMarkerOverlay, NaverMapView, type Coord, type NaverMapViewRef } from '@mj-studio/react-native-naver-map';
-import { AddPointModal, DEFAULT_NEW_POINT } from '@/components/map/AddPointModal';
+import { AddPointModal } from '@/components/map/AddPointModal';
 import { distanceKm, formatDistance, type Coords } from '@/components/map/distance';
 import { MARKER_APPEARANCE, markerKind, ZOOM } from '@/components/map/markerAppearance';
-import { styles } from '@/components/map/mapStyles';
 import { PointDetailModal } from '@/components/map/PointDetailModal';
+import { chipClass, chipTextClass, cls, PLACEHOLDER_COLOR } from '@/components/map/ui';
 import { useCreatePoint, useDeletePoint, useFavoritePointIds, usePoints, useToggleFavorite } from '@/hooks/queries';
 import { useUser } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
@@ -27,7 +28,8 @@ export default function MapScreen() {
   const [addModal, setAddModal] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
-  const [newPoint, setNewPoint] = useState<FishingPointInput>(DEFAULT_NEW_POINT);
+  /** 지도 탭 모드에서 고른 좌표 (포인트 추가 폼에 전달) */
+  const [pickedCoords, setPickedCoords] = useState<Coords | null>(null);
   const [mapTapMode, setMapTapMode] = useState(false);
   const [calloutPointId, setCalloutPointId] = useState<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -106,18 +108,15 @@ export default function MapScreen() {
     // 빈 곳을 탭하면 말풍선을 닫는다 (react-native-maps Callout과 동일한 동작)
     setCalloutPointId(null);
     if (!mapTapMode) return;
-    setNewPoint((prev) => ({ ...prev, lat: latitude, lng: longitude }));
+    setPickedCoords({ latitude, longitude });
     Alert.alert('위치 선택됨', `위도: ${latitude.toFixed(4)}\n경도: ${longitude.toFixed(4)}`);
   };
 
-  const addPoint = () => {
-    if (!newPoint.name.trim()) {
-      Alert.alert('알림', '포인트 이름을 입력해주세요!');
-      return;
-    }
-    createPoint.mutate(newPoint, {
+  const addPoint = (input: FishingPointInput, resetForm: () => void) => {
+    createPoint.mutate(input, {
       onSuccess: () => {
-        setNewPoint(DEFAULT_NEW_POINT);
+        resetForm();
+        setPickedCoords(null);
         setAddModal(false);
         setMapTapMode(false);
       },
@@ -151,16 +150,16 @@ export default function MapScreen() {
         : `🎣 ${isMine(point) ? '내 포인트' : '공유 포인트'}`;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🗺️ 낚시 포인트</Text>
-        <Text style={styles.sub}>{userLocation ? '📍 내 위치 기준 가까운 순' : '주변 낚시 명소'}</Text>
+    <View className="flex-1 bg-ocean-deep">
+      <View className="px-[20px] pt-[56px] pb-[8px]">
+        <Text className="text-white text-[20px] font-semibold">🗺️ 낚시 포인트</Text>
+        <Text className="text-muted text-[12px] mt-[2px]">{userLocation ? '📍 내 위치 기준 가까운 순' : '주변 낚시 명소'}</Text>
       </View>
 
-      <View style={styles.mapContainer}>
+      <View className="h-[220px] mx-[16px] mt-[8px] rounded-[16px] overflow-hidden border border-card-border">
         <NaverMapView
           ref={mapRef}
-          style={styles.map}
+          style={{ flex: 1 }}
           mapType="Hybrid"
           initialCamera={userLocation ? { ...userLocation, zoom: ZOOM.userArea } : FALLBACK_CAMERA}
           isShowLocationButton
@@ -191,99 +190,124 @@ export default function MapScreen() {
           })}
         </NaverMapView>
         {calloutPoint && (
-          <TouchableOpacity style={styles.callout} activeOpacity={0.85} onPress={() => openDetail(calloutPoint)}>
-            <Text style={styles.calloutTitle}>{calloutPoint.name}</Text>
-            <Text style={styles.calloutSub}>{calloutPoint.address}</Text>
+          <TouchableOpacity
+            className="absolute top-[10px] left-[10px] right-[10px] bg-ocean-mid rounded-[10px] p-[10px] border border-[rgba(255,255,255,0.2)]"
+            activeOpacity={0.85}
+            onPress={() => openDetail(calloutPoint)}
+          >
+            <Text className="text-white text-[13px] font-semibold mb-[2px]">{calloutPoint.name}</Text>
+            <Text className="text-muted text-[11px]">{calloutPoint.address}</Text>
             {userLocation && (
-              <Text style={styles.calloutDist}>📍 {formatDistance(userLocation, calloutPoint.lat, calloutPoint.lng)}</Text>
+              <Text className="text-ocean-light text-[11px] mt-[2px]">📍 {formatDistance(userLocation, calloutPoint.lat, calloutPoint.lng)}</Text>
             )}
-            <Text style={styles.calloutRating}>{ownerLabel(calloutPoint)}</Text>
-            <Text style={styles.calloutHint}>탭하여 상세 보기</Text>
+            <Text className="text-accent text-[11px] mt-[4px]">{ownerLabel(calloutPoint)}</Text>
+            <Text className="text-ocean-light text-[11px] mt-[4px]">탭하여 상세 보기</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.addMapBtn} onPress={() => setAddModal(true)}>
-          <Text style={styles.addMapBtnText}>+ 포인트 추가</Text>
+        <TouchableOpacity className="absolute bottom-[10px] right-[10px] bg-accent rounded-[20px] px-[14px] py-[7px]" onPress={() => setAddModal(true)}>
+          <Text className="text-white text-[13px] font-semibold">+ 포인트 추가</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchWrap}>
-        <Text style={{ fontSize: 14, color: colors.textMuted }}>🔍</Text>
-        <TextInput style={styles.searchInput} placeholder="포인트 이름, 지역 검색..." placeholderTextColor="rgba(255,255,255,0.4)" value={search} onChangeText={setSearch} />
-        <TouchableOpacity onPress={() => setShowFavorites(!showFavorites)} style={[styles.favBtn, showFavorites && styles.favBtnActive]}>
-          <Text style={{ fontSize: 14 }}>⭐</Text>
+      <View className="flex-row items-center bg-card border border-card-border rounded-[12px] mx-[16px] mt-[10px] mb-[8px] px-[14px] py-[10px]">
+        <Text className="text-[14px] text-muted">🔍</Text>
+        <TextInput
+          className="flex-1 text-white text-[13px] ml-[8px]"
+          placeholder="포인트 이름, 지역 검색..."
+          placeholderTextColor={PLACEHOLDER_COLOR}
+          value={search}
+          onChangeText={setSearch}
+        />
+        <TouchableOpacity
+          onPress={() => setShowFavorites(!showFavorites)}
+          className={`p-[4px] rounded-[8px]${showFavorites ? ' bg-[rgba(244,168,38,0.2)]' : ''}`}
+        >
+          <Text className="text-[14px]">⭐</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-[4px] grow-0" contentContainerClassName="px-[16px]">
         {FILTERS.map((f) => (
-          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={[styles.chip, activeFilter === f && styles.chipActive, { marginRight: 8 }]}>
-            <Text style={[styles.chipText, activeFilter === f && { color: colors.white, fontWeight: '500' }]}>{f}</Text>
+          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} className={`${chipClass(activeFilter === f)} mr-[8px]`}>
+            <Text className={chipTextClass(activeFilter === f, true)}>{f}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-[6px] grow-0" contentContainerClassName="px-[16px]">
         {SPECIES.map((s) => (
-          <TouchableOpacity key={s} onPress={() => setActiveSpecies(s)} style={[styles.chip, activeSpecies === s && styles.chipSpeciesActive, { marginRight: 8 }]}>
-            <Text style={[styles.chipText, activeSpecies === s && { color: colors.white, fontWeight: '500' }]}>{s}</Text>
+          <TouchableOpacity key={s} onPress={() => setActiveSpecies(s)} className={`${chipClass(activeSpecies === s, 'ocean')} mr-[8px]`}>
+            <Text className={chipTextClass(activeSpecies === s, true)}>{s}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        ListEmptyComponent={
-          pointsQuery.isLoading ? (
-            <ActivityIndicator color={colors.accent} style={{ marginTop: 20 }} />
-          ) : pointsQuery.error ? (
-            <Text style={{ color: colors.accent2, fontSize: 13, textAlign: 'center', marginTop: 20 }}>
-              포인트를 불러오지 못했어요.{'\n'}{pointsQuery.error.message}
-            </Text>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.pointCard, selectedPointId === item.id && styles.pointCardActive]}
-            onPress={() => { moveToPoint(item); openDetail(item); }}
-            activeOpacity={0.8}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {isFavorite(item.id) && <Text style={{ fontSize: 12, marginRight: 4 }}>⭐</Text>}
-                  <Text style={{ color: colors.white, fontSize: 14, fontWeight: '500' }}>{item.name}</Text>
-                  {!item.isDefault && !isMine(item) && <Text style={{ color: colors.oceanLight, fontSize: 10, marginLeft: 6 }}>공유</Text>}
-                  {isMine(item) && <Text style={{ color: colors.accent, fontSize: 10, marginLeft: 6 }}>내 포인트</Text>}
+      <View className="flex-1">
+        <FlashList
+          data={filtered}
+          keyExtractor={(item) => String(item.id)}
+          // renderItem이 선택·즐겨찾기·내 위치에 따라 달라지므로 바뀔 때 다시 그리게 한다
+          extraData={[selectedPointId, favoriteIds, userLocation, user.id]}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          ListEmptyComponent={
+            pointsQuery.isLoading ? (
+              <ActivityIndicator color={colors.accent} className="mt-[20px]" />
+            ) : pointsQuery.error ? (
+              <Text className="text-accent-2 text-[13px] text-center mt-[20px]">
+                포인트를 불러오지 못했어요.{'\n'}{pointsQuery.error.message}
+              </Text>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              className={`border rounded-[14px] p-[14px] mb-[10px] ${selectedPointId === item.id ? 'border-accent bg-[rgba(244,168,38,0.08)]' : 'bg-card border-card-border'}`}
+              onPress={() => { moveToPoint(item); openDetail(item); }}
+              activeOpacity={0.8}
+            >
+              <View className="flex-row justify-between items-start mb-[8px]">
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    {isFavorite(item.id) && <Text className="text-[12px] mr-[4px]">⭐</Text>}
+                    <Text className="text-white text-[14px] font-medium">{item.name}</Text>
+                    {!item.isDefault && !isMine(item) && <Text className="text-ocean-light text-[10px] ml-[6px]">공유</Text>}
+                    {isMine(item) && <Text className="text-accent text-[10px] ml-[6px]">내 포인트</Text>}
+                  </View>
+                  <Text className="text-muted text-[11px] mt-[2px]">
+                    {item.address}
+                    {userLocation ? ` · ${formatDistance(userLocation, item.lat, item.lng)}` : ''}
+                  </Text>
                 </View>
-                <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
-                  {item.address}
-                  {userLocation ? ` · ${formatDistance(userLocation, item.lat, item.lng)}` : ''}
-                </Text>
+                <View className="flex-row items-center">
+                  {item.hot && (
+                    <View className="bg-[rgba(244,168,38,0.2)] border border-accent rounded-[6px] px-[8px] py-[3px]">
+                      <Text className="text-accent text-[10px] font-semibold">🔥 핫</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity onPress={() => toggleFavorite(item.id)} className="ml-[8px] p-[4px]">
+                    <Text className="text-[18px]">{isFavorite(item.id) ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {item.hot && (
-                  <View style={styles.hotBadge}>
-                    <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '600' }}>🔥 핫</Text>
+              <View className="flex-row flex-wrap">
+                <View className="bg-[rgba(42,159,196,0.2)] border border-ocean-light rounded-[6px] px-[8px] py-[3px]">
+                  <Text className={cls.tagText}>{item.type}</Text>
+                </View>
+                {item.species.map((s) => (
+                  <View key={s} className="bg-[rgba(255,255,255,0.08)] rounded-[6px] px-[8px] py-[3px] ml-[6px]">
+                    <Text className={cls.tagText}>{s}</Text>
+                  </View>
+                ))}
+                {item.rating > 0 && (
+                  <View className="bg-[rgba(255,255,255,0.08)] rounded-[6px] px-[8px] py-[3px] ml-[6px]">
+                    <Text className={cls.tagText}>⭐ {item.rating}</Text>
                   </View>
                 )}
-                <TouchableOpacity onPress={() => toggleFavorite(item.id)} style={{ marginLeft: 8, padding: 4 }}>
-                  <Text style={{ fontSize: 18 }}>{isFavorite(item.id) ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
               </View>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              <View style={styles.typeTag}><Text style={styles.tagText}>{item.type}</Text></View>
-              {item.species.map((s) => (
-                <View key={s} style={[styles.tag, { marginLeft: 6 }]}><Text style={styles.tagText}>{s}</Text></View>
-              ))}
-              {item.rating > 0 && <View style={[styles.tag, { marginLeft: 6 }]}><Text style={styles.tagText}>⭐ {item.rating}</Text></View>}
-            </View>
-          </TouchableOpacity>
-        )}
-        ListFooterComponent={<View style={{ height: 20 }} />}
-      />
+            </TouchableOpacity>
+          )}
+          ListFooterComponent={<View className="h-[20px]" />}
+        />
+      </View>
 
       <PointDetailModal
         point={selectedPoint}
@@ -299,8 +323,6 @@ export default function MapScreen() {
 
       <AddPointModal
         visible={addModal}
-        value={newPoint}
-        onChange={setNewPoint}
         types={FILTERS.slice(1)}
         speciesOptions={SPECIES.slice(1)}
         mapTapMode={mapTapMode}
@@ -308,6 +330,7 @@ export default function MapScreen() {
           if (!mapTapMode) setAddModal(false);
           setMapTapMode(!mapTapMode);
         }}
+        pickedCoords={pickedCoords}
         userLocation={userLocation}
         submitting={createPoint.isPending}
         onSubmit={addPoint}

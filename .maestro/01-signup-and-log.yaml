@@ -1,0 +1,57 @@
+# 가입 → 일지 작성 → 도감 반영까지 자동으로 확인하는 시나리오
+# 실행: maestro test .maestro/  (개발 빌드가 폰/에뮬레이터에 설치되어 있고 npx expo start 실행 중이어야 함)
+# 사전 조건: Supabase에서 이메일 인증(Confirm email)을 꺼둘 것
+appId: com.chani.fishingapp
+env:
+  EMAIL: maestro+${MAESTRO_RUN_ID}@example.com
+  PASSWORD: testpass1234
+  NICKNAME: 테스트낚시꾼
+---
+- launchApp:
+    clearState: true
+- assertVisible: "🎣"
+
+# 회원가입
+- tapOn: "회원가입"
+- tapOn:
+    text: "닉네임.*"
+- inputText: ${NICKNAME}
+- tapOn:
+    text: "이메일.*"
+- inputText: ${EMAIL}
+- tapOn:
+    text: "비밀번호.*"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "(회원가입|가입하기).*"
+- extendedWaitUntil:
+    visible: "홈"
+    timeout: 15000
+
+# 일지 작성
+- tapOn: "일지"
+- tapOn:
+    text: ".*(새 일지|일지 쓰기|기록하기|\\+).*"
+- tapOn:
+    text: "장소.*"
+- inputText: "영종도 방파제"
+- tapOn: "광어"
+- tapOn:
+    text: "크기.*"
+- inputText: "45"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "(저장|기록 저장).*"
+- tapOn:
+    text: "(저장|기록 저장).*"
+- extendedWaitUntil:
+    visible: "영종도 방파제"
+    timeout: 15000
+
+# 도감에 자동 반영되는지
+- tapOn: "도감"
+- tapOn:
+    text: "🏆 내 도감.*"
+- assertVisible: "광어"

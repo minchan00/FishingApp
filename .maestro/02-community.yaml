@@ -1,0 +1,35 @@
+# 커뮤니티 글쓰기 → 좋아요 → 댓글 (01 시나리오로 로그인된 상태에서 실행)
+appId: com.chani.fishingapp
+---
+- launchApp
+- tapOn: "커뮤니티"
+- tapOn:
+    text: ".*(글쓰기|\\+).*"
+- tapOn: "조황 정보"
+- tapOn:
+    text: ".*(내용|이야기).*"
+- inputText: "Maestro 자동 테스트 글입니다"
+- hideKeyboard
+- tapOn:
+    text: "(등록|올리기|작성).*"
+- extendedWaitUntil:
+    visible: "Maestro 자동 테스트 글입니다"
+    timeout: 15000
+
+# 좋아요
+- tapOn:
+    text: ".*🤍.*"
+    index: 0
+- assertVisible:
+    text: ".*❤️.*"
+
+# 댓글
+- tapOn:
+    text: ".*💬.*"
+    index: 0
+- tapOn:
+    text: ".*댓글.*"
+- inputText: "자동 댓글"
+- tapOn:
+    text: "(등록|전송).*"
+- assertVisible: "자동 댓글"

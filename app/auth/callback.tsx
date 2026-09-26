@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useSession } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
 
@@ -13,14 +13,10 @@ export default function AuthCallbackScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-ocean-deep items-center justify-center">
         <ActivityIndicator color={colors.white} />
       </View>
     );
   }
   return <Redirect href={session ? '/' : '/sign-in'} />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.oceanDeep, alignItems: 'center', justifyContent: 'center' },
-});

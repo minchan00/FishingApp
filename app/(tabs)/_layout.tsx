@@ -33,9 +33,9 @@ export default function TabsLayout() {
           name={tab.name}
           options={{
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 22 }}>{tab.icon}</Text>
-                <Text style={{ fontSize: 10, color: focused ? colors.accent : colors.textMuted, marginTop: 3 }}>
+              <View className="items-center">
+                <Text className="text-[22px]">{tab.icon}</Text>
+                <Text className={`text-[10px] mt-[3px] ${focused ? 'text-accent' : 'text-muted'}`}>
                   {tab.label}
                 </Text>
               </View>

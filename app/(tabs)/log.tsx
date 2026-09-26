@@ -1,14 +1,19 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { LogCard } from '@/components/log/LogCard';
 import { LogDetailModal } from '@/components/log/LogDetailModal';
 import { LogFormModal } from '@/components/log/LogFormModal';
-import { errorMessage, formatKoreanDate } from '@/components/log/format';
+import { errorMessage } from '@/components/log/format';
 import { useDeleteLog, useLogs } from '@/hooks/queries';
 import { colors } from '@/theme/colors';
 import type { Catch, FishingLog } from '@/types/models';
 
 type Tab = '일지' | '통계';
 const TABS: readonly Tab[] = ['일지', '통계'];
+
+const STAT_CARD = 'mr-2 flex-1 items-center rounded-xl border border-card-border bg-card p-3';
+const SECTION_CARD = 'mb-3 rounded-[14px] border border-card-border bg-white/5 p-3.5';
 
 function computeStats(logs: FishingLog[]) {
   const allCatches = logs.flatMap((l) => l.catches);
@@ -22,9 +27,6 @@ function computeStats(logs: FishingLog[]) {
   const topSpecies = [...speciesCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   return { totalTrips: logs.length, totalCatch, maxFish, topSpecies };
 }
-
-const ratingLabel = (rating: FishingLog['rating']) =>
-  rating === '대박' ? '🏆 대박' : rating === '보통' ? '😊 보통' : '😔 꽝';
 
 export default function LogScreen() {
   const logsQuery = useLogs();
@@ -76,32 +78,32 @@ export default function LogScreen() {
 
   if (logsQuery.isPending) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View className="flex-1 items-center justify-center bg-ocean-deep">
         <ActivityIndicator color={colors.accent} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View className="flex-1 bg-ocean-deep">
+      <View className="flex-row items-start justify-between px-5 pb-2 pt-14">
         <View>
-          <Text style={styles.title}>📔 낚시 일지</Text>
-          <Text style={styles.sub}>나의 낚시 기록</Text>
+          <Text className="text-[20px] font-semibold text-white">📔 낚시 일지</Text>
+          <Text className="mt-0.5 text-[12px] text-muted">나의 낚시 기록</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openNew}>
-          <Text style={styles.addBtnText}>+ 기록</Text>
+        <TouchableOpacity className="rounded-xl bg-accent px-3.5 py-2" onPress={openNew}>
+          <Text className="text-[13px] font-semibold text-white">+ 기록</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tabRow}>
+      <View className="mx-4 mb-3 flex-row rounded-xl bg-card p-1">
         {TABS.map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+            className={`flex-1 items-center rounded-[10px] py-2 ${activeTab === tab ? 'bg-accent' : ''}`}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+            <Text className={`text-[13px] font-medium ${activeTab === tab ? 'text-white' : 'text-muted'}`}>
               {tab === '일지' ? '📋 일지' : '📊 통계'}
             </Text>
           </TouchableOpacity>
@@ -109,123 +111,80 @@ export default function LogScreen() {
       </View>
 
       {activeTab === '일지' ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={{ paddingHorizontal: 16 }}>
-            {logsQuery.isError ? (
-              <View style={styles.emptyWrap}>
-                <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 12 }}>
-                  일지를 불러오지 못했어요.
-                </Text>
+        <FlashList
+          data={logsQuery.isError ? [] : logs}
+          keyExtractor={(log) => String(log.id)}
+          renderItem={({ item }) => <LogCard log={item} onPress={setSelectedLogId} />}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          ListEmptyComponent={
+            logsQuery.isError ? (
+              <View className="items-center py-[60px]">
+                <Text className="mb-3 text-center text-[14px] text-muted">일지를 불러오지 못했어요.</Text>
                 <TouchableOpacity onPress={() => logsQuery.refetch()}>
-                  <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>다시 시도</Text>
+                  <Text className="text-[13px] font-semibold text-accent">다시 시도</Text>
                 </TouchableOpacity>
               </View>
-            ) : logs.length === 0 ? (
-              <View style={styles.emptyWrap}>
-                <Text style={{ fontSize: 48, marginBottom: 12 }}>📔</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center' }}>
+            ) : (
+              <View className="items-center py-[60px]">
+                <Text className="mb-3 text-[48px]">📔</Text>
+                <Text className="text-center text-[14px] text-muted">
                   아직 기록이 없어요!{'\n'}첫 낚시 일지를 작성해보세요 😊
                 </Text>
               </View>
-            ) : (
-              logs.map((log) => (
-                <TouchableOpacity
-                  key={log.id}
-                  style={styles.logCard}
-                  onPress={() => setSelectedLogId(log.id)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.logHeader}>
-                    <Text style={styles.logHeaderText}>
-                      {formatKoreanDate(log.fishedOn)} · {log.location}
-                    </Text>
-                    <Text style={styles.logRating}>{ratingLabel(log.rating)}</Text>
-                  </View>
-                  <View style={{ padding: 14 }}>
-                    <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                      <Text style={styles.logMeta}>{log.weather}</Text>
-                      {log.duration ? <Text style={[styles.logMeta, { marginLeft: 12 }]}>⏰ {log.duration}시간</Text> : null}
-                      <Text style={[styles.logMeta, { marginLeft: 12 }]}>
-                        🎣 {log.catches.reduce((s, c) => s + c.count, 0)}마리
-                      </Text>
-                    </View>
-                    {log.catches.length > 0 && (
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                        {log.catches.map((c, i) => (
-                          <View key={i} style={styles.catchTag}>
-                            <Text style={styles.catchTagText}>
-                              {c.species} {c.sizeCm !== null ? `${c.sizeCm}cm` : ''} {c.count > 1 ? `x${c.count}` : ''}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    {log.memo ? (
-                      <Text style={styles.logMemo} numberOfLines={2}>
-                        {log.memo}
-                      </Text>
-                    ) : null}
-                    {log.imageUrl ? <Image source={{ uri: log.imageUrl }} style={styles.logImage} resizeMode="cover" /> : null}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-          <View style={{ height: 30 }} />
-        </ScrollView>
+            )
+          }
+          ListFooterComponent={<View className="h-[30px]" />}
+        />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={{ paddingHorizontal: 16 }}>
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.totalTrips}</Text>
-                <Text style={styles.statLabel}>총 출조</Text>
+          <View className="px-4">
+            <View className="mb-3 flex-row">
+              <View className={STAT_CARD}>
+                <Text className="text-[20px] font-semibold text-white">{stats.totalTrips}</Text>
+                <Text className="mt-1 text-[10px] text-muted">총 출조</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statValue, { color: colors.accent }]}>{stats.totalCatch}</Text>
-                <Text style={styles.statLabel}>총 포획</Text>
+              <View className={STAT_CARD}>
+                <Text className="text-[20px] font-semibold text-accent">{stats.totalCatch}</Text>
+                <Text className="mt-1 text-[10px] text-muted">총 포획</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statValue, { color: colors.oceanLight, fontSize: 16 }]}>
+              <View className={STAT_CARD}>
+                <Text className="text-[16px] font-semibold text-ocean-light">
                   {stats.maxFish ? `${stats.maxFish.sizeCm}cm` : '-'}
                 </Text>
-                <Text style={styles.statLabel}>최대 어획</Text>
+                <Text className="mt-1 text-[10px] text-muted">최대 어획</Text>
               </View>
             </View>
             {stats.maxFish && (
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>🏆 최대 어획</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-                  <Text style={{ color: colors.white, fontSize: 15, fontWeight: '600' }}>{stats.maxFish.species}</Text>
-                  <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>{stats.maxFish.sizeCm}cm</Text>
+              <View className={SECTION_CARD}>
+                <Text className="text-[14px] font-semibold text-white">🏆 최대 어획</Text>
+                <View className="mt-2.5 flex-row justify-between">
+                  <Text className="text-[15px] font-semibold text-white">{stats.maxFish.species}</Text>
+                  <Text className="text-[15px] font-semibold text-accent">{stats.maxFish.sizeCm}cm</Text>
                 </View>
               </View>
             )}
             {stats.topSpecies.length > 0 && (
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>🐟 어종별 포획 순위</Text>
+              <View className={SECTION_CARD}>
+                <Text className="text-[14px] font-semibold text-white">🐟 어종별 포획 순위</Text>
                 {stats.topSpecies.map(([species, count], i) => (
-                  <View key={species} style={styles.rankRow}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text
-                        style={{
-                          color: i === 0 ? colors.accent : colors.textMuted,
-                          fontSize: 14,
-                          marginRight: 8,
-                          fontWeight: '600',
-                        }}
-                      >
+                  <View
+                    key={species}
+                    className="flex-row items-center justify-between border-b border-white/[0.08] py-2.5"
+                  >
+                    <View className="flex-row items-center">
+                      <Text className={`mr-2 text-[14px] font-semibold ${i === 0 ? 'text-accent' : 'text-muted'}`}>
                         {i + 1}위
                       </Text>
-                      <Text style={{ color: colors.white, fontSize: 14 }}>{species}</Text>
+                      <Text className="text-[14px] text-white">{species}</Text>
                     </View>
-                    <Text style={{ color: colors.oceanLight, fontSize: 14, fontWeight: '600' }}>{count}마리</Text>
+                    <Text className="text-[14px] font-semibold text-ocean-light">{count}마리</Text>
                   </View>
                 ))}
               </View>
             )}
           </View>
-          <View style={{ height: 30 }} />
+          <View className="h-[30px]" />
         </ScrollView>
       )}
 
@@ -241,34 +200,3 @@ export default function LogScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.oceanDeep },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 8 },
-  title: { color: colors.white, fontSize: 20, fontWeight: '600' },
-  sub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  addBtn: { backgroundColor: colors.accent, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
-  addBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
-  tabRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.cardBg, borderRadius: 12, padding: 4 },
-  tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-  tabBtnActive: { backgroundColor: colors.accent },
-  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '500' },
-  tabTextActive: { color: colors.white },
-  emptyWrap: { alignItems: 'center', paddingVertical: 60 },
-  logCard: { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
-  logHeader: { backgroundColor: 'rgba(26,106,138,0.4)', paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  logHeaderText: { color: colors.white, fontSize: 13, fontWeight: '500' },
-  logRating: { color: colors.accent, fontSize: 12 },
-  logImage: { width: '100%', height: 160, borderRadius: 10, marginTop: 8 },
-  logMeta: { color: colors.textMuted, fontSize: 12 },
-  logMemo: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 8 },
-  catchTag: { backgroundColor: 'rgba(42,159,196,0.2)', borderWidth: 1, borderColor: colors.oceanLight, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginRight: 6, marginBottom: 4 },
-  catchTagText: { color: colors.oceanLight, fontSize: 11 },
-  statsGrid: { flexDirection: 'row', marginBottom: 12 },
-  statCard: { flex: 1, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 12, padding: 12, alignItems: 'center', marginRight: 8 },
-  statValue: { color: colors.white, fontSize: 20, fontWeight: '600' },
-  statLabel: { color: colors.textMuted, fontSize: 10, marginTop: 4 },
-  sectionCard: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 14, padding: 14, marginBottom: 12 },
-  sectionTitle: { color: colors.white, fontSize: 14, fontWeight: '600' },
-  rankRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
-});

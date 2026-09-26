@@ -2,7 +2,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { AiError } from '@/data/ai';
 import { colors } from '@/theme/colors';
 import type { FishAnalysis } from '@/types/models';
-import { styles } from './fishStyles';
+import { cls, DetailRow } from './ui';
 
 const CONFIDENCE = {
   high: { label: '확실해요', color: '#4caf50' },
@@ -21,11 +21,11 @@ export function AnalysisResult({ analysis, error, onRegister }: Props) {
     const code = error instanceof AiError ? error.code : 'UNKNOWN';
     const icon = code === 'DAILY_LIMIT' ? '⏳' : code === 'AI_BUSY' ? '🚦' : code === 'NETWORK' ? '📡' : '⚠️';
     return (
-      <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-        <Text style={{ fontSize: 36, marginBottom: 8 }}>{icon}</Text>
-        <Text style={{ color: colors.white, fontSize: 14, lineHeight: 22, textAlign: 'center' }}>{error.message}</Text>
+      <View className="items-center py-[16px]">
+        <Text className="text-[36px] mb-[8px]">{icon}</Text>
+        <Text className="text-white text-[14px] leading-[22px] text-center">{error.message}</Text>
         {code === 'DAILY_LIMIT' ? (
-          <Text style={styles.hintText}>💡 어종 이름을 알면 위 검색창에서 직접 찾아볼 수 있어요</Text>
+          <Text className={cls.hintText}>💡 어종 이름을 알면 위 검색창에서 직접 찾아볼 수 있어요</Text>
         ) : null}
       </View>
     );
@@ -33,13 +33,13 @@ export function AnalysisResult({ analysis, error, onRegister }: Props) {
   if (!analysis) return null;
 
   const { identification: id, remainingToday } = analysis;
-  const remaining = <Text style={styles.hintText}>오늘 남은 분석 {remainingToday}회</Text>;
+  const remaining = <Text className={cls.hintText}>오늘 남은 분석 {remainingToday}회</Text>;
 
   if (!id.recognized) {
     return (
-      <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-        <Text style={{ fontSize: 36, marginBottom: 8 }}>🤔</Text>
-        <Text style={{ color: colors.white, fontSize: 14, textAlign: 'center' }}>어종을 인식할 수 없어요.{'\n'}물고기가 잘 보이게 다시 찍어주세요.</Text>
+      <View className="items-center py-[16px]">
+        <Text className="text-[36px] mb-[8px]">🤔</Text>
+        <Text className="text-white text-[14px] text-center">어종을 인식할 수 없어요.{'\n'}물고기가 잘 보이게 다시 찍어주세요.</Text>
         {remaining}
       </View>
     );
@@ -58,20 +58,18 @@ export function AnalysisResult({ analysis, error, onRegister }: Props) {
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Text style={{ color: colors.white, fontSize: 22, fontWeight: '700' }}>🐟 {id.species}</Text>
-        <View style={{ marginLeft: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: `${confidence.color}33` }}>
-          <Text style={{ color: confidence.color, fontSize: 11, fontWeight: '600' }}>{confidence.label}</Text>
+      <View className="flex-row items-center mb-[8px]">
+        <Text className="text-white text-[22px] font-bold">🐟 {id.species}</Text>
+        {/* 신뢰도 색은 값에 따라 달라지므로 style로 둔다 */}
+        <View className="ml-[10px] px-[8px] py-[3px] rounded-[10px]" style={{ backgroundColor: `${confidence.color}33` }}>
+          <Text className="text-[11px] font-semibold" style={{ color: confidence.color }}>{confidence.label}</Text>
         </View>
       </View>
       {rows.map((r) => (
-        <View key={r.label} style={styles.detailRow}>
-          <Text style={styles.detailLabel}>{r.label}</Text>
-          <Text style={styles.detailValue}>{r.value}</Text>
-        </View>
+        <DetailRow key={r.label} label={r.label} value={r.value} />
       ))}
-      <TouchableOpacity style={[styles.registerBtn, { marginTop: 14 }]} onPress={onRegister}>
-        <Text style={styles.registerBtnText}>🐟 도감 + 일지에 등록하기</Text>
+      <TouchableOpacity className={`${cls.registerBtn} mt-[14px]`} onPress={onRegister}>
+        <Text className={cls.btnText}>🐟 도감 + 일지에 등록하기</Text>
       </TouchableOpacity>
       {remaining}
     </View>

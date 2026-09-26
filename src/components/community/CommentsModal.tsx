@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -6,17 +5,21 @@ import {
   Modal,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { errorMessage } from '@/components/log/format';
+import { FieldError, FormTextInput } from '@/components/log/FormTextInput';
 import { useAddComment, useComments, useDeleteComment } from '@/hooks/queries';
+import { commentFormSchema, type CommentFormOutput, type CommentFormValues } from '@/schemas/post';
 import { colors } from '@/theme/colors';
 import type { Comment, Post } from '@/types/models';
 import { formatTime } from './formatTime';
+
+const EMPTY_TEXT = 'py-5 text-center text-[13px] text-white/40';
 
 type Props = {
   post: Post | null;
@@ -30,16 +33,19 @@ export function CommentsModal({ post, visible, nickname, userId, onClose }: Prop
   const commentsQuery = useComments(visible && post ? post.id : null);
   const addComment = useAddComment();
   const deleteComment = useDeleteComment();
-  const [newComment, setNewComment] = useState('');
+  const { control, handleSubmit, reset, formState } = useForm<CommentFormValues, unknown, CommentFormOutput>({
+    resolver: zodResolver(commentFormSchema),
+    defaultValues: { content: '' },
+  });
 
   const comments = commentsQuery.data ?? [];
 
-  const submitComment = () => {
-    if (!newComment.trim() || !post || addComment.isPending) return;
+  const submitComment = ({ content }: CommentFormOutput) => {
+    if (!post || addComment.isPending) return;
     addComment.mutate(
-      { postId: post.id, content: newComment.trim() },
+      { postId: post.id, content },
       {
-        onSuccess: () => setNewComment(''),
+        onSuccess: () => reset({ content: '' }),
         onError: (e) => Alert.alert('오류', errorMessage(e)),
       },
     );
@@ -59,80 +65,71 @@ export function CommentsModal({ post, visible, nickname, userId, onClose }: Prop
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>💬 댓글</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        <View className="flex-1 justify-end bg-black/70">
+          <View className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[16px] font-semibold text-white">💬 댓글</Text>
               <TouchableOpacity onPress={onClose}>
-                <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
+                <Text className="text-[20px] text-muted">✕</Text>
               </TouchableOpacity>
             </View>
             {post && (
-              <View style={styles.postPreview}>
-                <Text style={{ color: colors.white, fontSize: 13, lineHeight: 20 }}>{post.content}</Text>
+              <View className="mb-3 rounded-[10px] bg-white/5 p-3">
+                <Text className="text-[13px] leading-[20px] text-white">{post.content}</Text>
               </View>
             )}
-            <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+            <ScrollView className="max-h-[250px]" showsVerticalScrollIndicator={false}>
               {commentsQuery.isPending ? (
-                <ActivityIndicator color={colors.accent} style={{ paddingVertical: 20 }} />
+                <ActivityIndicator color={colors.accent} className="py-5" />
               ) : commentsQuery.isError ? (
-                <Text style={styles.emptyText}>댓글을 불러오지 못했어요.</Text>
+                <Text className={EMPTY_TEXT}>댓글을 불러오지 못했어요.</Text>
               ) : comments.length === 0 ? (
-                <Text style={styles.emptyText}>첫 댓글을 남겨보세요!</Text>
+                <Text className={EMPTY_TEXT}>첫 댓글을 남겨보세요!</Text>
               ) : (
                 comments.map((c) => (
-                  <View key={c.id} style={styles.commentItem}>
-                    <Text style={{ fontSize: 16 }}>{c.authorEmoji}</Text>
-                    <View style={{ marginLeft: 8, flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ color: colors.white, fontSize: 12, fontWeight: '500' }}>{c.authorNickname}</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginLeft: 6 }}>
-                          {formatTime(c.createdAt)}
-                        </Text>
+                  <View key={c.id} className="flex-row items-start border-b border-white/[0.08] py-2.5">
+                    <Text className="text-[16px]">{c.authorEmoji}</Text>
+                    <View className="ml-2 flex-1">
+                      <View className="flex-row items-center">
+                        <Text className="text-[12px] font-medium text-white">{c.authorNickname}</Text>
+                        <Text className="ml-1.5 text-[10px] text-white/40">{formatTime(c.createdAt)}</Text>
                       </View>
-                      <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 }}>{c.content}</Text>
+                      <Text className="mt-0.5 text-[13px] text-white/85">{c.content}</Text>
                     </View>
                     {c.authorId === userId && (
-                      <TouchableOpacity onPress={() => confirmDelete(c)} style={{ paddingLeft: 8 }}>
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>🗑️</Text>
+                      <TouchableOpacity onPress={() => confirmDelete(c)} className="pl-2">
+                        <Text className="text-[12px] text-white/40">🗑️</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 ))
               )}
             </ScrollView>
-            <View style={styles.commentInput}>
-              <TextInput
-                style={{ flex: 1, color: colors.white, fontSize: 13 }}
+            <View className="mt-3 flex-row items-center rounded-xl border border-card-border bg-card px-3.5 py-2.5">
+              <FormTextInput
+                control={control}
+                name="content"
+                showError={false}
+                className="flex-1 text-[13px] text-white"
                 placeholder={`${nickname} 으로 댓글 작성...`}
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={newComment}
-                onChangeText={setNewComment}
               />
-              <TouchableOpacity onPress={submitComment} style={styles.commentSendBtn} disabled={addComment.isPending}>
+              <TouchableOpacity
+                onPress={handleSubmit(submitComment)}
+                className="ml-2 rounded-lg bg-accent px-3 py-1.5"
+                disabled={addComment.isPending}
+              >
                 {addComment.isPending ? (
                   <ActivityIndicator color={colors.white} size="small" />
                 ) : (
-                  <Text style={{ color: colors.white, fontSize: 12, fontWeight: '600' }}>등록</Text>
+                  <Text className="text-[12px] font-semibold text-white">등록</Text>
                 )}
               </TouchableOpacity>
             </View>
+            <FieldError message={formState.errors.content?.message} spacing="mt-1.5" />
           </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.oceanMid, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  postPreview: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 12, marginBottom: 12 },
-  emptyText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', paddingVertical: 20 },
-  commentItem: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
-  commentInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 12 },
-  commentSendBtn: { backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginLeft: 8 },
-});

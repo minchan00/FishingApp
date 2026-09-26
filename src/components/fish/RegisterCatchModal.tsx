@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Image } from 'expo-image';
+import { useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSaveLog } from '@/hooks/queries';
+import { registerCatchSchema, type RegisterCatchFormInput, type RegisterCatchFormOutput } from '@/schemas/fish';
 import { colors } from '@/theme/colors';
-import { styles } from './fishStyles';
+import { CloseX, cls, FieldError, inputClass, PLACEHOLDER_COLOR, SheetModal } from './ui';
 
-export type RegisterDraft = { name: string; size: string; location: string; memo: string };
+export type RegisterDraft = RegisterCatchFormInput;
+
+const EMPTY_DRAFT: RegisterDraft = { name: '', size: '', location: '', memo: '' };
 
 type Props = {
   /** null이면 닫힘 */
@@ -23,31 +29,27 @@ function todayString(): string {
 
 /** AI 분석 결과를 일지로 등록한다. 도감은 일지에서 자동 계산된다. */
 export function RegisterCatchModal({ draft, imageUri, onClose, onRegistered }: Props) {
-  const [data, setData] = useState<RegisterDraft>({ name: '', size: '', location: '', memo: '' });
   const saveLog = useSaveLog();
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<RegisterCatchFormInput, unknown, RegisterCatchFormOutput>({
+    resolver: zodResolver(registerCatchSchema),
+    defaultValues: EMPTY_DRAFT,
+  });
 
   useEffect(() => {
-    if (draft) setData(draft);
-  }, [draft]);
+    if (draft) reset(draft);
+  }, [draft, reset]);
 
-  const register = () => {
-    const species = data.name.trim();
-    if (!species) {
-      Alert.alert('알림', '어종명을 입력해주세요!');
-      return;
-    }
-    const size = parseFloat(data.size);
-    const memo = data.memo.trim();
+  const register = handleSubmit(({ name: species, size, location, memo }) => {
     saveLog.mutate(
       {
         input: {
           fishedOn: todayString(),
-          location: data.location.trim() || '미입력',
+          location: location || '미입력',
           weather: '맑음 ☀️',
           duration: '',
           memo: `AI 분석으로 자동 등록${memo ? ': ' + memo : ''}`,
           imageUri,
-          catches: [{ species, sizeCm: Number.isFinite(size) ? size : null, count: 1 }],
+          catches: [{ species, sizeCm: size, count: 1 }],
         },
       },
       {
@@ -58,36 +60,75 @@ export function RegisterCatchModal({ draft, imageUri, onClose, onRegistered }: P
         onError: () => Alert.alert('오류', '등록 중 오류가 발생했어요.'),
       },
     );
-  };
+  });
 
   return (
-    <Modal visible={draft !== null} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>🐟 도감 + 일지 등록</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={{ color: colors.textMuted, fontSize: 20 }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={{ width: '100%', height: 130, borderRadius: 12, marginBottom: 14 }} resizeMode="cover" />
-          ) : null}
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.inputLabel}>🐟 어종명 *</Text>
-            <TextInput style={styles.input} value={data.name} onChangeText={(t) => setData({ ...data, name: t })} placeholder="어종명" placeholderTextColor="rgba(255,255,255,0.4)" />
-            <Text style={styles.inputLabel}>📏 크기 (cm)</Text>
-            <TextInput style={styles.input} value={data.size} onChangeText={(t) => setData({ ...data, size: t })} placeholder="크기 입력 (선택)" placeholderTextColor="rgba(255,255,255,0.4)" keyboardType="numeric" />
-            <Text style={styles.inputLabel}>📍 잡은 장소</Text>
-            <TextInput style={styles.input} value={data.location} onChangeText={(t) => setData({ ...data, location: t })} placeholder="장소 입력 (선택)" placeholderTextColor="rgba(255,255,255,0.4)" />
-            <Text style={styles.inputLabel}>📝 메모</Text>
-            <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]} value={data.memo} onChangeText={(t) => setData({ ...data, memo: t })} placeholder="메모 (선택)" placeholderTextColor="rgba(255,255,255,0.4)" multiline />
-          </ScrollView>
-          <TouchableOpacity style={styles.registerBtn} onPress={register} disabled={saveLog.isPending}>
-            {saveLog.isPending ? <ActivityIndicator color={colors.white} /> : <Text style={styles.registerBtnText}>✅ 도감 + 일지에 등록하기</Text>}
-          </TouchableOpacity>
-        </View>
+    <SheetModal visible={draft !== null} onClose={onClose}>
+      <View className={cls.modalHeader}>
+        <Text className={cls.modalTitle}>🐟 도감 + 일지 등록</Text>
+        <CloseX onPress={onClose} />
       </View>
-    </Modal>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: '100%', height: 130, borderRadius: 12, marginBottom: 14 }}
+          contentFit="cover"
+          transition={200}
+        />
+      ) : null}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Text className={cls.inputLabel}>🐟 어종명 *</Text>
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <TextInput className={inputClass(!!errors.name)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="어종명" placeholderTextColor={PLACEHOLDER_COLOR} />
+          )}
+        />
+        <FieldError message={errors.name?.message} />
+
+        <Text className={cls.inputLabel}>📏 크기 (cm)</Text>
+        <Controller
+          control={control}
+          name="size"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <TextInput className={inputClass(!!errors.size)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="크기 입력 (선택)" placeholderTextColor={PLACEHOLDER_COLOR} keyboardType="numeric" />
+          )}
+        />
+        <FieldError message={errors.size?.message} />
+
+        <Text className={cls.inputLabel}>📍 잡은 장소</Text>
+        <Controller
+          control={control}
+          name="location"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <TextInput className={inputClass(!!errors.location)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="장소 입력 (선택)" placeholderTextColor={PLACEHOLDER_COLOR} />
+          )}
+        />
+        <FieldError message={errors.location?.message} />
+
+        <Text className={cls.inputLabel}>📝 메모</Text>
+        <Controller
+          control={control}
+          name="memo"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <TextInput
+              className={`${inputClass(!!errors.memo)} h-[70px]`}
+              style={{ textAlignVertical: 'top' }}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="메모 (선택)"
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              multiline
+            />
+          )}
+        />
+        <FieldError message={errors.memo?.message} />
+      </ScrollView>
+      <TouchableOpacity className={`${cls.registerBtn} mt-[12px]`} onPress={register} disabled={saveLog.isPending}>
+        {saveLog.isPending ? <ActivityIndicator color={colors.white} /> : <Text className={cls.btnText}>✅ 도감 + 일지에 등록하기</Text>}
+      </TouchableOpacity>
+    </SheetModal>
   );
 }
