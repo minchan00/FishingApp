@@ -1,5 +1,6 @@
 // Sentry는 다른 모듈보다 먼저 초기화해야 초기 에러까지 잡힌다
 import { navigationIntegration, Sentry, setSentryUser } from '@/lib/sentry';
+import '../global.css';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
