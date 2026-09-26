@@ -4,12 +4,12 @@ import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text
 import WeatherDetailModal from '@/components/WeatherDetailModal';
 import { changePassword, deleteAccount, signOut } from '@/data/auth';
 import {
-  DEFAULT_OBS, OBS_LIST, findTideEvents, getConditionEmoji, getCurrentTideSlice, getFishingScore,
-  getScoreGrade, locateNearestObs, tideHour, tideTime, type ObsStation,
+  DEFAULT_OBS, OBS_LIST, getConditionEmoji, getCurrentTideSlice, getFishingScore,
+  getScoreGrade, kstHourNow, kstYmd, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
 import { useProfile, useUpdateNickname } from '@/hooks/queries';
 import { useUser } from '@/hooks/useSession';
-import { useCurrentWeather, useTide } from '@/hooks/useWeather';
+import { useCurrentWeather, useTide, useTideForecastWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
 
 const QUICK_ACTIONS: { icon: string; title: string; sub: string; href: Href }[] = [
@@ -30,6 +30,7 @@ export default function HomeScreen() {
   const [locating, setLocating] = useState(false);
   const weather = useCurrentWeather(selectedObs);
   const tide = useTide(selectedObs);
+  const tideForecast = useTideForecastWeek(selectedObs);
   const obs = selectedObs ?? DEFAULT_OBS;
 
   const [obsModal, setObsModal] = useState(false);
@@ -118,12 +119,12 @@ export default function HomeScreen() {
     setSelectedObs(next);
   };
 
-  const refetchAll = () => { weather.refetch(); tide.refetch(); };
+  const refetchAll = () => { weather.refetch(); tide.refetch(); tideForecast.refetch(); };
 
   const filteredObs = OBS_LIST.filter((o) => o.name.includes(obsSearch));
 
   const renderWeatherCard = () => {
-    if (locating || weather.isPending || tide.isPending) {
+    if (locating || weather.isPending || tide.isPending || tideForecast.isPending) {
       return (
         <View style={styles.loadingCard}>
           <ActivityIndicator color={colors.accent} size="large" />
@@ -150,11 +151,14 @@ export default function HomeScreen() {
     const tempMax = Math.round(w.main.temp_max);
     const feelsLike = Math.round(w.main.feels_like);
     const windSpeed = Math.round(w.wind.speed);
-    const score = getFishingScore(w.wind.speed, tideItems);
+    // 고조·저조는 예보 API 기준. 자정 전후 물때도 잡도록 점수에는 5일치 전체를 넘긴다.
+    const forecastWeek = tideForecast.data ?? {};
+    const allTideEvents = Object.values(forecastWeek).flat();
+    const tideEvents = forecastWeek[kstYmd()] ?? [];
+    const score = getFishingScore(w.wind.speed, allTideEvents.length > 0 ? allTideEvents : null);
     const grade = getScoreGrade(score);
     const tideSlice = tideItems ? getCurrentTideSlice(tideItems) : [];
-    const tideEvents = findTideEvents(tideItems);
-    const nowHour = new Date().getHours();
+    const nowHour = kstHourNow();
 
     return (
       <TouchableOpacity style={styles.weatherCard} onPress={() => setDetailModal(true)} activeOpacity={0.9}>
@@ -217,9 +221,9 @@ export default function HomeScreen() {
                 );
               })}
             </ScrollView>
-          ) : (
+          ) : tideEvents.length === 0 ? (
             <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', paddingVertical: 10 }}>조위 데이터가 없어요</Text>
-          )}
+          ) : null}
 
           {/* 만조/간조 시간 */}
           {tideEvents.length > 0 && (

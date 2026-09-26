@@ -11,7 +11,8 @@ create table public.profiles (
   created_at  timestamptz not null default now()
 );
 
--- 회원가입 시 프로필 자동 생성 (닉네임은 signUp의 options.data.nickname)
+-- 회원가입 시 프로필 자동 생성
+-- 이메일 가입은 options.data.nickname, 카카오 로그인은 name에 닉네임이 들어온다
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -19,7 +20,17 @@ security definer set search_path = ''
 as $$
 begin
   insert into public.profiles (id, nickname)
-  values (new.id, coalesce(nullif(trim(new.raw_user_meta_data ->> 'nickname'), ''), '낚시꾼'));
+  values (
+    new.id,
+    left(
+      coalesce(
+        nullif(trim(new.raw_user_meta_data ->> 'nickname'), ''),
+        nullif(trim(new.raw_user_meta_data ->> 'name'), ''),
+        '낚시꾼'
+      ),
+      20
+    )
+  );
   return new;
 end;
 $$;

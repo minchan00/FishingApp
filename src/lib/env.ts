@@ -9,4 +9,6 @@ export const env = {
   supabaseAnonKey: required('EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
   weatherApiKey: process.env.EXPO_PUBLIC_WEATHER_API_KEY ?? '',
   tideApiKey: process.env.EXPO_PUBLIC_TIDE_API_KEY ?? '',
+  /** 비어 있으면 Sentry를 켜지 않는다 */
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
 };

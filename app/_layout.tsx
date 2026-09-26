@@ -1,5 +1,7 @@
+// Sentry는 다른 모듈보다 먼저 초기화해야 초기 에러까지 잡힌다
+import { navigationIntegration, Sentry, setSentryUser } from '@/lib/sentry';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -12,10 +14,16 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { session, loading } = useSession();
+  const userId = session?.user.id ?? null;
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
   }, [loading]);
+
+  // 에러 리포트에 어떤 사용자인지 id만 붙인다 (이메일은 보내지 않음)
+  useEffect(() => {
+    setSentryUser(userId);
+  }, [userId]);
 
   if (loading) return null;
 
@@ -31,7 +39,13 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
+  const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
+    navigationIntegration.registerNavigationContainer(navigationRef);
+  }, [navigationRef]);
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
@@ -43,3 +57,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

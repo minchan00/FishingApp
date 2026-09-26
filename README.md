@@ -69,6 +69,12 @@ npm install
    npx supabase functions deploy identify-fish
    ```
 3. 대시보드 → Authentication → Sign In / Providers → Email에서 개발 중에는 **Confirm email**을 꺼두면 가입 즉시 로그인됩니다.
+4. **카카오 로그인** (선택)
+   - [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 앱 생성 후 **카카오 로그인 활성화**
+   - 카카오 로그인 → Redirect URI에 `https://<프로젝트 ref>.supabase.co/auth/v1/callback` 추가
+   - 동의항목에서 **닉네임 · 프로필 사진 · 카카오계정(이메일)** 설정 (이메일은 비즈 앱 전환이 필요할 수 있음)
+   - 앱 키의 **REST API 키**와 보안 → **Client Secret**을 Supabase 대시보드 → Authentication → Sign In / Providers → Kakao에 입력
+   - Supabase → Authentication → URL Configuration → Redirect URLs에 `fishingapp://**` 추가 (Expo Go로 개발할 땐 `exp://**`도)
 
 ### 3. 환경변수
 `.env.example`을 `.env`로 복사한 뒤 값을 채웁니다. `.env`는 git에 올라가지 않습니다.
@@ -79,6 +85,8 @@ npm install
 | `EXPO_PUBLIC_WEATHER_API_KEY` | OpenWeatherMap |
 | `EXPO_PUBLIC_TIDE_API_KEY` | 공공데이터포털 조위 API |
 | `GOOGLE_MAPS_API_KEY` | Android 지도 (빌드 시에만 사용) |
+| `EXPO_PUBLIC_SENTRY_DSN` | Sentry → Project Settings → Client Keys. 비워두면 에러 추적 꺼짐 |
+| `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | 소스맵 업로드용 (EAS 빌드에서만, 선택) |
 
 > Groq 키는 앱에 넣지 않고 Supabase secret으로만 관리합니다.
 

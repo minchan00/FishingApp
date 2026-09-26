@@ -3,8 +3,13 @@ import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { signIn, signUp } from '@/data/auth';
+import { signIn, signInWithKakao, signUp } from '@/data/auth';
+import { captureError } from '@/lib/sentry';
 import { colors } from '@/theme/colors';
+
+// 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%)
+const KAKAO_YELLOW = '#FEE500';
+const KAKAO_LABEL = 'rgba(0,0,0,0.85)';
 
 type Mode = 'login' | 'register';
 
@@ -15,6 +20,20 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+  const busy = loading || kakaoLoading;
+
+  const handleKakao = async () => {
+    setKakaoLoading(true);
+    try {
+      await signInWithKakao();
+    } catch (e) {
+      captureError(e, { where: 'signInWithKakao' });
+      Alert.alert('카카오 로그인 실패', e instanceof Error ? e.message : '카카오 로그인에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setKakaoLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -61,6 +80,18 @@ export default function SignInScreen() {
         <Text style={styles.appName}>낚시 일지</Text>
         <Text style={styles.sub}>바다와 함께하는 낚시 기록</Text>
 
+        <TouchableOpacity style={styles.kakaoBtn} onPress={handleKakao} disabled={busy} accessibilityRole="button">
+          {kakaoLoading
+            ? <ActivityIndicator color={KAKAO_LABEL} />
+            : <Text style={styles.kakaoBtnText}>카카오로 시작하기</Text>}
+        </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>또는 이메일로</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         <View style={styles.tabRow}>
           <TouchableOpacity style={[styles.tab, mode === 'login' && styles.tabActive]} onPress={() => setMode('login')}>
             <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>로그인</Text>
@@ -100,7 +131,7 @@ export default function SignInScreen() {
           secureTextEntry
         />
 
-        <TouchableOpacity style={styles.submitBtn} onPress={mode === 'login' ? handleLogin : handleRegister} disabled={loading}>
+        <TouchableOpacity style={styles.submitBtn} onPress={mode === 'login' ? handleLogin : handleRegister} disabled={busy}>
           {loading
             ? <ActivityIndicator color={colors.white} />
             : <Text style={styles.submitBtnText}>{mode === 'login' ? '로그인' : '회원가입'}</Text>}
@@ -121,6 +152,11 @@ const styles = StyleSheet.create({
   logo: { fontSize: 64, marginBottom: 8 },
   appName: { color: colors.white, fontSize: 26, fontWeight: '700', marginBottom: 6 },
   sub: { color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 40 },
+  kakaoBtn: { width: '100%', backgroundColor: KAKAO_YELLOW, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  kakaoBtnText: { color: KAKAO_LABEL, fontSize: 16, fontWeight: '600' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginVertical: 24 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.25)' },
+  dividerText: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginHorizontal: 12 },
   tabRow: { flexDirection: 'row', backgroundColor: colors.cardBg, borderRadius: 14, padding: 4, marginBottom: 24, width: '100%' },
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
   tabActive: { backgroundColor: colors.accent },

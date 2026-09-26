@@ -1,7 +1,46 @@
 // 날씨(OpenWeatherMap)·조위(국립해양조사원, data.go.kr) 조회와 낚시 점수 계산.
+import { addDays, format, isSameDay, parseISO } from 'date-fns';
 import * as Location from 'expo-location';
 import { env } from '@/lib/env';
 import { colors } from '@/theme/colors';
+
+// ── 한국 시간(KST) ─────────────────────────────
+// 앱은 한국 전용이고 조위 API도 KST 기준 문자열을 준다. 기기 시간대와 무관하게 한국 날짜/시각을 쓰려고
+// 시각(epoch) → KST 변환은 +9h 후 UTC 필드로 읽는다(기기 서머타임 영향 없음. 한국은 서머타임이 없어 +9 고정).
+// '날짜'(시각 없는 달력 날짜)는 'yyyy-MM-dd' 문자열로 다루고, 날짜 계산만 date-fns로 한다.
+const KST_OFFSET_MIN = 9 * 60;
+const MINUTE = 60_000;
+
+/** 'YYYY-MM-DDTHH:mm:ss.sssZ' 형태지만 필드 값이 KST인 문자열 */
+const kstIso = (ms: number) => new Date(ms + KST_OFFSET_MIN * MINUTE).toISOString();
+
+/** 시각 → KST 날짜 'yyyy-MM-dd' */
+export const kstYmd = (ms: number = Date.now()) => kstIso(ms).slice(0, 10);
+
+/** 시각 → KST 'HH:mm' */
+export const kstHm = (ms: number) => kstIso(ms).slice(11, 16);
+
+/** 시각 → KST 시(0~23) */
+export const kstHour = (ms: number = Date.now()) => new Date(ms + KST_OFFSET_MIN * MINUTE).getUTCHours();
+
+/** 현재 KST 시(0~23) */
+export const kstHourNow = () => kstHour();
+
+/** 오늘(KST) 달력 날짜. date-fns 날짜 계산용(로컬 자정 Date). */
+const kstToday = () => parseISO(kstYmd());
+
+/** 'yyyy-MM-dd'(KST 날짜)가 오늘(KST)인지 */
+export const isKstToday = (ymd: string) => isSameDay(parseISO(ymd), kstToday());
+
+/** KST 벽시계 성분 → epoch ms */
+const kstToEpoch = (y: number, mo: number, d: number, h: number, mi: number) =>
+  Date.UTC(y, mo - 1, d, h, mi) - KST_OFFSET_MIN * MINUTE;
+
+/** 오늘(KST)부터 n일치 달력 날짜 */
+const kstNextDays = (n: number) => {
+  const today = kstToday();
+  return Array.from({ length: n }, (_, i) => addDays(today, i));
+};
 
 // ── 조위 관측소 ────────────────────────────────
 export type ObsStation = { code: string; name: string; lat: number; lon: number };
@@ -77,14 +116,15 @@ export type CurrentWeather = {
 };
 
 export type ForecastItem = {
-  dt_txt: string; // 'YYYY-MM-DD HH:mm:ss' (UTC)
+  dt: number; // unix seconds (UTC 시각). 날짜/시간 표시는 반드시 이 값을 KST로 바꿔서 쓴다.
+  dt_txt: string; // 'YYYY-MM-DD HH:mm:ss' (UTC) — 표시용으로 쓰지 말 것
   main: { temp: number; humidity: number };
   wind: { speed: number };
   weather: WeatherCondition[];
 };
 
 export type ForecastDay = {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (KST)
   tempMin: number;
   tempMax: number;
   avgWind: number;
@@ -103,22 +143,27 @@ export async function fetchCurrentWeather(lat: number, lon: number): Promise<Cur
   return data as CurrentWeather;
 }
 
-/** 3시간 간격 예보를 날짜별로 묶어 최대 5일치 요약을 만든다. */
+/** 예보 항목의 KST 시각 'HH:mm' */
+export const forecastTime = (item: ForecastItem) => kstHm(item.dt * 1000);
+
+/** 3시간 간격 예보를 KST 날짜별로 묶어 최대 5일치 요약을 만든다. */
 export async function fetchForecast(lat: number, lon: number): Promise<ForecastDay[]> {
   const res = await fetch(`${OWM_BASE}/forecast?lat=${lat}&lon=${lon}&appid=${env.weatherApiKey}&units=metric&lang=kr&cnt=40`);
   const data = (await res.json()) as { list?: ForecastItem[] };
-  if (!data.list) throw new Error('예보를 불러올 수 없어요');
+  if (!Array.isArray(data.list)) throw new Error('예보를 불러올 수 없어요');
 
+  // dt_txt는 UTC라 그대로 자르면 KST 00~09시 예보가 전날로 묶인다 → dt를 KST 날짜로 바꿔 묶는다
   const grouped = new Map<string, ForecastItem[]>();
   for (const item of data.list) {
-    const date = item.dt_txt.split(' ')[0] ?? '';
+    if (typeof item.dt !== 'number') continue;
+    const date = kstYmd(item.dt * 1000);
     grouped.set(date, [...(grouped.get(date) ?? []), item]);
   }
 
   return [...grouped.entries()].slice(0, 5).map(([date, items]) => {
     const temps = items.map((i) => i.main.temp);
     const winds = items.map((i) => i.wind.speed);
-    const noon = items.find((i) => i.dt_txt.includes('12:00')) ?? items[Math.floor(items.length / 2)]!;
+    const noon = items.find((i) => kstHour(i.dt * 1000) === 12) ?? items[Math.floor(items.length / 2)]!;
     return {
       date,
       tempMin: Math.round(Math.min(...temps)),
@@ -145,77 +190,150 @@ export function getConditionEmoji(main: string | undefined): string {
 }
 
 // ── 조위 (data.go.kr) ──────────────────────────
+// 공공데이터포털 응답은 { header, body } 또는 { response: { header, body } } 로 오고,
+// item이 1건이면 배열이 아니라 객체로 오기도 한다. 필드도 숫자/문자열이 섞여서 모두 런타임에 검사한다.
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** 응답 JSON에서 body.items.item 목록을 꺼낸다. 형태가 다르면 빈 배열. */
+function extractItems(json: unknown): Obj[] {
+  if (!isObj(json)) return [];
+  const root = isObj(json.response) ? json.response : json;
+  const header = root.header;
+  if (isObj(header) && header.resultCode !== undefined && String(header.resultCode) !== '00') {
+    console.warn('조위 API 오류:', header.resultCode, header.resultMsg);
+    return [];
+  }
+  const body = root.body;
+  if (!isObj(body) || !isObj(body.items)) return [];
+  const item = body.items.item;
+  if (Array.isArray(item)) return item.filter(isObj);
+  return isObj(item) ? [item] : [];
+}
+
+const toNum = (v: unknown): number | null => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+// ─ 시간별 조위(실측·예측, surveyTideLevel) — 시간별 조위 표에만 쓴다
 /** 조위 API는 숫자를 문자열로 주기도 해서 둘 다 받는다. */
 export type TideItem = {
-  obsrvnDt?: string; // 'YYYY-MM-DD HH:mm'
+  obsrvnDt?: string; // 'YYYY-MM-DD HH:mm' (KST)
   bscTdlvHgt?: string | number | null; // 실측
   tdlvHgt?: string | number | null; // 예측
 };
 
-export type TideEvent = { type: '만조' | '간조'; time: string; height: number };
+const toTideItem = (o: Obj): TideItem | null =>
+  typeof o.obsrvnDt === 'string'
+    ? {
+        obsrvnDt: o.obsrvnDt,
+        bscTdlvHgt: typeof o.bscTdlvHgt === 'string' || typeof o.bscTdlvHgt === 'number' ? o.bscTdlvHgt : null,
+        tdlvHgt: typeof o.tdlvHgt === 'string' || typeof o.tdlvHgt === 'number' ? o.tdlvHgt : null,
+      }
+    : null;
 
-type TideResponse = { body?: { items?: { item?: TideItem[] } } };
+/** 오늘(KST) 날짜 'yyyyMMdd' — 쿼리 키용 */
+export const todayYmd = () => kstYmd().replace(/-/g, '');
 
-const toYmd = (d: Date, sep = '') =>
-  [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join(sep);
-
-export const todayYmd = () => toYmd(new Date());
-
-/** 하루치 시간별 조위(60분 간격). 데이터가 없으면 빈 배열. */
-export async function fetchTide(obsCode: string, date: Date = new Date()): Promise<TideItem[]> {
-  const url = `https://apis.data.go.kr/1192136/surveyTideLevel/GetSurveyTideLevelApiService?serviceKey=${env.tideApiKey}&type=json&obsCode=${obsCode}&reqDate=${toYmd(date)}&min=60&pageNo=1&numOfRows=24`;
+/** 하루치 시간별 조위(60분 간격). date는 KST 달력 날짜. 데이터가 없으면 빈 배열. */
+export async function fetchTide(obsCode: string, date: Date = kstToday()): Promise<TideItem[]> {
+  const url = `https://apis.data.go.kr/1192136/surveyTideLevel/GetSurveyTideLevelApiService?serviceKey=${env.tideApiKey}&type=json&obsCode=${obsCode}&reqDate=${format(date, 'yyyyMMdd')}&min=60&pageNo=1&numOfRows=24`;
   const res = await fetch(url);
-  const data = (await res.json()) as TideResponse;
-  return data.body?.items?.item ?? [];
+  const json: unknown = await res.json();
+  return extractItems(json).map(toTideItem).filter((i): i is TideItem => i !== null);
 }
 
-/** 오늘부터 5일치 조위. 키는 'YYYY-MM-DD'이고, 데이터가 없거나 실패한 날은 빠진다. */
+/** 오늘(KST)부터 5일치 시간별 조위. 키는 'YYYY-MM-DD'(KST)이고, 데이터가 없거나 실패한 날은 빠진다. */
 export async function fetchTideWeek(obsCode: string): Promise<Record<string, TideItem[]>> {
-  const today = new Date();
-  const days = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d;
-  });
+  const days = kstNextDays(5);
   const results = await Promise.all(days.map((d) => fetchTide(obsCode, d).catch(() => [])));
   const week: Record<string, TideItem[]> = {};
   results.forEach((items, i) => {
-    if (items.length > 0) week[toYmd(days[i]!, '-')] = items;
+    if (items.length > 0) week[format(days[i]!, 'yyyy-MM-dd')] = items;
   });
   return week;
 }
 
 export const tideTime = (item: TideItem) => item.obsrvnDt?.split(' ')[1]?.slice(0, 5) || '-';
 export const tideHour = (item: TideItem) => parseInt(item.obsrvnDt?.split(' ')[1]?.split(':')[0] || '0', 10);
-const tideHeight = (item: TideItem) => parseFloat(String(item.bscTdlvHgt || item.tdlvHgt || 0));
 
-/** 앞뒤보다 높으면 만조, 낮으면 간조 */
-export function findTideEvents(items: TideItem[] | null | undefined): TideEvent[] {
-  if (!items || items.length < 3) return [];
-  const events: TideEvent[] = [];
-  for (let i = 1; i < items.length - 1; i++) {
-    const prev = tideHeight(items[i - 1]!);
-    const curr = tideHeight(items[i]!);
-    const next = tideHeight(items[i + 1]!);
-    if (!curr) continue;
-    const time = tideTime(items[i]!);
-    if (curr > prev && curr > next) events.push({ type: '만조', time, height: Math.round(curr) });
-    else if (curr < prev && curr < next) events.push({ type: '간조', time, height: Math.round(curr) });
-  }
-  return events;
-}
-
-/** 현재 시각 직전부터 6개 구간 */
+/** 현재(KST) 시각 직전부터 6개 구간 */
 export function getCurrentTideSlice(items: TideItem[]): TideItem[] {
-  const nowHour = new Date().getHours();
+  const nowHour = kstHourNow();
   const idx = items.findIndex((item) => tideHour(item) >= nowHour);
   const start = Math.max(0, idx === -1 ? items.length - 4 : idx - 1);
   return items.slice(start, start + 6);
 }
 
+// ─ 조석예보 고조·저조 (tideFcstHghLw)
+// https://www.data.go.kr/data/15156018/openapi.do
+// item: obsvtrNm(예보지점명), lat, lot, predcDt(예측일시, KST), predcTdlvVl(예측조위 cm),
+//       extrSe(극치구분 1: 오전 고조, 2: 오전 저조, 3: 오후 고조, 4: 오후 저조)
+export type TideEvent = {
+  type: '만조' | '간조';
+  /** KST 'HH:mm' */
+  time: string;
+  /** cm */
+  height: number;
+  /** epoch ms */
+  at: number;
+};
+
+/** 'YYYY-MM-DD HH:mm[:ss]', 'YYYYMMDDHHmm', 'YYYY-MM-DDTHH:mm' 등을 KST 시각으로 해석 */
+function parseKstDateTime(s: string): number | null {
+  const m = /^(\d{4})-?(\d{2})-?(\d{2})[ T]?(\d{2}):?(\d{2})/.exec(s.trim());
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number) as [number, number, number, number, number];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+  return kstToEpoch(y, mo, d, h, mi);
+}
+
+function toTideEvent(o: Obj): TideEvent | null {
+  const at = typeof o.predcDt === 'string' ? parseKstDateTime(o.predcDt) : null;
+  const height = toNum(o.predcTdlvVl);
+  const kind = toNum(o.extrSe);
+  if (at === null || height === null) return null;
+  const type = kind === 1 || kind === 3 ? '만조' : kind === 2 || kind === 4 ? '간조' : null;
+  if (!type) return null;
+  return { type, time: kstHm(at), height: Math.round(height), at };
+}
+
+/** 하루치(KST) 고조·저조 예보. 시각순 정렬. 응답 형태가 다르면 빈 배열. */
+export async function fetchTideForecast(obsCode: string, date: Date = kstToday()): Promise<TideEvent[]> {
+  const url = `https://apis.data.go.kr/1192136/tideFcstHghLw/GetTideFcstHghLwApiService?serviceKey=${env.tideApiKey}&type=json&obsCode=${obsCode}&reqDate=${format(date, 'yyyyMMdd')}&pageNo=1&numOfRows=10`;
+  const res = await fetch(url);
+  const json: unknown = await res.json();
+  return extractItems(json)
+    .map(toTideEvent)
+    .filter((e): e is TideEvent => e !== null)
+    .sort((a, b) => a.at - b.at);
+}
+
+/** 오늘(KST)부터 5일치 고조·저조 예보. 키는 'YYYY-MM-DD'(KST). 데이터가 없거나 실패한 날은 빠진다. */
+export async function fetchTideForecastWeek(obsCode: string): Promise<Record<string, TideEvent[]>> {
+  const days = kstNextDays(5);
+  const results = await Promise.all(days.map((d) => fetchTideForecast(obsCode, d).catch(() => [])));
+  const week: Record<string, TideEvent[]> = {};
+  results.forEach((events, i) => {
+    const key = format(days[i]!, 'yyyy-MM-dd');
+    // 요청한 날짜의 이벤트만 담는다(혹시 전후일이 섞여 와도 다른 날 탭에 끼지 않게)
+    const own = events.filter((e) => kstYmd(e.at) === key);
+    if (own.length > 0) week[key] = own;
+  });
+  return week;
+}
+
 // ── 낚시 점수 ─────────────────────────────────
-/** 낚시 종합 점수 (바람 + 물때 + 시간대) */
-export function getFishingScore(windSpeed: number, tideItems: TideItem[] | null): number {
+/** 물때 가점: 만조/간조 전후 이 시간 이내면 물이 바뀌는 때로 본다 */
+const TIDE_CHANGE_WINDOW_MS = 90 * MINUTE;
+
+/** 낚시 종합 점수 (바람 + 물때 + 시간대). tideEvents는 고조·저조 예보. */
+export function getFishingScore(windSpeed: number, tideEvents: TideEvent[] | null, now: number = Date.now()): number {
   let score = 70;
   if (windSpeed <= 2) score += 20;
   else if (windSpeed <= 4) score += 10;
@@ -223,13 +341,9 @@ export function getFishingScore(windSpeed: number, tideItems: TideItem[] | null)
   else if (windSpeed <= 8) score -= 25;
   else score -= 45;
 
-  if (tideItems) {
-    const nowHour = new Date().getHours();
-    const nearChange = findTideEvents(tideItems).some((e) => Math.abs(parseInt(e.time.split(':')[0] || '0', 10) - nowHour) <= 1);
-    if (nearChange) score += 15;
-  }
+  if (tideEvents && tideEvents.some((e) => Math.abs(e.at - now) <= TIDE_CHANGE_WINDOW_MS)) score += 15;
 
-  const hour = new Date().getHours();
+  const hour = kstHour(now);
   if ((hour >= 5 && hour <= 7) || (hour >= 17 && hour <= 19)) score += 10;
   return Math.max(0, Math.min(100, score));
 }

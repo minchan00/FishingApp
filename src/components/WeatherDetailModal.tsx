@@ -1,9 +1,10 @@
+import { format, getDay, parseISO } from 'date-fns';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
-  OBS_LIST, findTideEvents, getConditionEmoji, locateNearestObs, tideHour, tideTime, type ObsStation,
+  OBS_LIST, forecastTime, getConditionEmoji, isKstToday, kstHourNow, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
-import { useForecast, useTideWeek } from '@/hooks/useWeather';
+import { useForecast, useTideForecastWeek, useTideWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
 
 type Props = {
@@ -14,12 +15,13 @@ type Props = {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+/** 'yyyy-MM-dd'(KST 날짜) → 'M/d 요일'. parseISO는 날짜만 있는 문자열을 로컬 자정으로 읽어 날짜가 밀리지 않는다. */
 const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return `${d.getMonth() + 1}/${d.getDate()} ${WEEKDAYS[d.getDay()]}`;
+  const d = parseISO(dateStr);
+  return `${format(d, 'M/d')} ${WEEKDAYS[getDay(d)]}`;
 };
 
-const isToday = (dateStr: string) => dateStr === new Date().toISOString().split('T')[0];
+const isToday = isKstToday;
 
 export default function WeatherDetailModal({ obs, onClose }: Props) {
   const [currentObs, setCurrentObs] = useState(obs);
@@ -30,6 +32,7 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
 
   const forecast = useForecast(currentObs);
   const tideWeek = useTideWeek(currentObs);
+  const tideForecast = useTideForecastWeek(currentObs);
 
   const selectObs = (next: ObsStation) => {
     setCurrentObs(next);
@@ -52,7 +55,7 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
 
   const filteredObs = OBS_LIST.filter((o) => o.name.includes(searchQuery));
 
-  if (forecast.isPending || tideWeek.isPending) {
+  if (forecast.isPending || tideWeek.isPending || tideForecast.isPending) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator color={colors.accent} size="large" />
@@ -66,8 +69,8 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
   const days = forecast.data ?? [];
   const selectedForecast = days[selectedDay];
   const selectedTide = selectedForecast ? tideWeek.data?.[selectedForecast.date] : undefined;
-  const tideEvents = findTideEvents(selectedTide);
-  const nowHour = new Date().getHours();
+  const tideEvents = (selectedForecast && tideForecast.data?.[selectedForecast.date]) || [];
+  const nowHour = kstHourNow();
 
   return (
     <View style={styles.container}>
@@ -143,7 +146,7 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                 {selectedForecast.hourly.map((item, i) => (
                   <View key={i} style={styles.hourItem}>
-                    <Text style={styles.hourTime}>{item.dt_txt.split(' ')[1]?.slice(0, 5)}</Text>
+                    <Text style={styles.hourTime}>{forecastTime(item)}</Text>
                     <Text style={{ fontSize: 20, marginVertical: 4 }}>{getConditionEmoji(item.weather[0]?.main)}</Text>
                     <Text style={styles.hourTemp}>{Math.round(item.main.temp)}°</Text>
                     <Text style={styles.hourWind}>{Math.round(item.wind.speed)}m/s</Text>
@@ -163,17 +166,17 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
                       <View key={i} style={[styles.tideHourItem, isCurrent && styles.tideHourItemCurrent]}>
                         <Text style={[styles.tideHourTime, isCurrent && { color: colors.accent }]}>{tideTime(item)}</Text>
                         <Text style={styles.tideHourActual}>{item.bscTdlvHgt ? `${item.bscTdlvHgt}` : '-'}</Text>
-                        <Text style={styles.tideHourPred}>{Math.round(Number(item.tdlvHgt))}</Text>
+                        <Text style={styles.tideHourPred}>{item.tdlvHgt != null ? Math.round(Number(item.tdlvHgt)) : '-'}</Text>
                         <Text style={styles.tideHourUnit}>cm</Text>
                       </View>
                     );
                   })}
                 </ScrollView>
-              ) : (
+              ) : tideEvents.length === 0 ? (
                 <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', paddingVertical: 16 }}>
                   조위 데이터가 없어요
                 </Text>
-              )}
+              ) : null}
               {tideEvents.length > 0 && (
                 <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
                   <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>🌊 만조 / 간조</Text>
