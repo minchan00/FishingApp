@@ -1,6 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
-// 빌드 시점 비밀값(지도 키 등)은 EAS 환경변수로 주입한다.
+// 빌드 시점 값(지도 키, Sentry 설정 등)은 .env 또는 EAS 환경변수로 주입한다.
 const config: ExpoConfig = {
   name: '낚시 일지',
   slug: 'fishingapp',
@@ -24,9 +24,6 @@ const config: ExpoConfig = {
       'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_VIDEO',
     ],
-    config: {
-      googleMaps: { apiKey: process.env.GOOGLE_MAPS_API_KEY },
-    },
   },
   ios: {
     supportsTablet: true,
@@ -34,6 +31,18 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // 네이버 지도: Expo Go에서는 동작하지 않아 개발 빌드가 필요하다
+    ['@mj-studio/react-native-naver-map', { client_id: process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID ?? '' }],
+    [
+      'expo-build-properties',
+      { android: { extraMavenRepos: ['https://repository.map.naver.com/archive/maven'] } },
+    ],
+    // 소스맵 업로드는 SENTRY_AUTH_TOKEN이 있을 때만 동작한다
+    [
+      '@sentry/react-native/expo',
+      { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT, url: 'https://sentry.io/' },
+    ],
+    'expo-web-browser',
     [
       'expo-image-picker',
       {
