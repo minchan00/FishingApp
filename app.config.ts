@@ -1,0 +1,66 @@
+import type { ExpoConfig } from 'expo/config';
+
+// 빌드 시점 비밀값(지도 키 등)은 EAS 환경변수로 주입한다.
+const config: ExpoConfig = {
+  name: '낚시 일지',
+  slug: 'fishingapp',
+  scheme: 'fishingapp',
+  version: '1.0.0',
+  orientation: 'portrait',
+  platforms: ['ios', 'android'],
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'dark',
+  android: {
+    package: 'com.chani.fishingapp',
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#0a2a3a',
+    },
+    // 사진은 시스템 사진 선택기를 쓰므로 저장소 권한이 필요 없다.
+    permissions: ['CAMERA', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+    blockedPermissions: [
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+    ],
+    config: {
+      googleMaps: { apiKey: process.env.GOOGLE_MAPS_API_KEY },
+    },
+  },
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.chani.fishingapp',
+  },
+  plugins: [
+    'expo-router',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: '낚시 사진을 선택하기 위해 갤러리 접근이 필요해요.',
+        cameraPermission: '어종 분석을 위해 카메라 접근이 필요해요.',
+      },
+    ],
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission: '현재 위치의 날씨·물때와 주변 낚시 포인트를 보여주기 위해 위치 정보가 필요해요.',
+      },
+    ],
+    'expo-status-bar',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        resizeMode: 'contain',
+        backgroundColor: '#0a2a3a',
+        imageWidth: 200,
+      },
+    ],
+  ],
+  experiments: {
+    typedRoutes: true,
+  },
+};
+
+export default config;

@@ -31,11 +31,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
-# API keys (민감 정보 - 절대 커밋하지 마세요)
-src/config/api.js
-src/config/firebase.js
+# Supabase local
+supabase/.temp/
+supabase/.branches/
 
 # typescript
 *.tsbuildinfo
