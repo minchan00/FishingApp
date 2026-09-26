@@ -3,13 +3,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { AnalysisResult } from '@/components/fish/AnalysisResult';
 import { DogamMemoModal } from '@/components/fish/DogamMemoModal';
 import { styles } from '@/components/fish/fishStyles';
 import { searchTaxa, type TaxonResult } from '@/components/fish/inaturalist';
 import { MyDogamTab } from '@/components/fish/MyDogamTab';
 import { RegisterCatchModal, type RegisterDraft } from '@/components/fish/RegisterCatchModal';
 import { SpeciesDetailModal } from '@/components/fish/SpeciesDetailModal';
-import { extractSpeciesName, identifyFish } from '@/data/ai';
+import { identifyFish } from '@/data/ai';
 import { useDogam } from '@/hooks/queries';
 import { colors } from '@/theme/colors';
 import type { DogamEntry } from '@/types/models';
@@ -48,7 +49,6 @@ export default function FishScreen() {
   const searchResults = taxa.data ?? [];
 
   const identify = useMutation({ mutationFn: identifyFish });
-  const result = identify.data ?? null;
 
   useEffect(() => () => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -79,12 +79,7 @@ export default function FishScreen() {
     setImage(asset.uri);
     identify.reset();
     setAiModal(true);
-    if (!asset.base64) {
-      Alert.alert('오류', '이미지를 읽을 수 없어요.');
-      setAiModal(false);
-      return;
-    }
-    identify.mutate(asset.base64);
+    identify.mutate(asset.uri);
   };
 
   // 카메라로 찍기
@@ -95,7 +90,7 @@ export default function FishScreen() {
         Alert.alert('권한 필요', '카메라 권한이 필요해요!');
         return;
       }
-      const res = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
+      const res = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
       const asset = res.canceled ? undefined : res.assets[0];
       if (asset) analyzeImage(asset);
     } catch {
@@ -103,10 +98,10 @@ export default function FishScreen() {
     }
   };
 
-  // 갤러리에서 선택 (base64 포함)
+  // 갤러리에서 선택
   const pickImage = async () => {
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
       const asset = res.canceled ? undefined : res.assets[0];
       if (asset) analyzeImage(asset);
     } catch {
@@ -116,7 +111,8 @@ export default function FishScreen() {
 
   // 도감 등록 모달 열기 (현재 위치를 장소 기본값으로)
   const openRegisterModal = async () => {
-    const speciesName = result ? extractSpeciesName(result) : null;
+    const id = identify.data?.identification;
+    const speciesName = id?.recognized ? id.species : null;
     let locationStr = '';
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -266,20 +262,9 @@ export default function FishScreen() {
                 <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 13 }}>AI가 분석하고 있어요...</Text>
               </View>
             ) : (
-              <>
-                <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
-                  {identify.error ? (
-                    <Text style={{ color: colors.white, fontSize: 14, lineHeight: 24 }}>오류: {identify.error.message}</Text>
-                  ) : (
-                    <Text style={{ color: colors.white, fontSize: 14, lineHeight: 24 }}>{result}</Text>
-                  )}
-                </ScrollView>
-                {result && !result.includes('인식할 수 없어요') ? (
-                  <TouchableOpacity style={styles.registerBtn} onPress={openRegisterModal}>
-                    <Text style={styles.registerBtnText}>🐟 도감 + 일지에 등록하기</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </>
+              <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+                <AnalysisResult analysis={identify.data ?? null} error={identify.error} onRegister={openRegisterModal} />
+              </ScrollView>
             )}
             <TouchableOpacity style={[styles.closeBtn, { marginTop: 8 }]} onPress={() => setAiModal(false)}>
               <Text style={styles.closeBtnText}>닫기</Text>

@@ -65,6 +65,7 @@ npm install
    npx supabase link --project-ref <프로젝트 ref>
    npx supabase db push
    npx supabase secrets set GROQ_API_KEY=<Groq 키>
+   npx supabase secrets set AI_DAILY_LIMIT=10   # 사용자별 하루 AI 분석 횟수 (생략 시 10)
    npx supabase functions deploy identify-fish
    ```
 3. 대시보드 → Authentication → Sign In / Providers → Email에서 개발 중에는 **Confirm email**을 꺼두면 가입 즉시 로그인됩니다.
@@ -92,6 +93,7 @@ npx expo start
 
 - 모든 테이블에 **RLS(행 단위 보안)** 적용 — 남의 일지 조회, 남의 글·포인트 삭제는 DB에서 거부됩니다.
 - 사진은 본인 폴더(`photos/{uid}/`)에만 업로드할 수 있습니다.
+- AI 어종 분석은 **사용자별 하루 횟수 제한** — 무료 AI 한도를 한 사람이 다 쓰지 못하게 하고, 사용 기록은 서버만 수정할 수 있습니다.
 - 앱 내 **회원 탈퇴** 시 계정과 모든 데이터·사진이 삭제됩니다.
 
 <br>

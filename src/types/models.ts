@@ -104,3 +104,24 @@ export type Comment = {
   content: string;
   createdAt: string;
 };
+
+export type FishIdentification =
+  | { recognized: false }
+  | {
+      recognized: true;
+      species: string;
+      confidence: 'high' | 'medium' | 'low';
+      averageSize: string;
+      habitat: string;
+      fishingMethod: string;
+      bait: string;
+      season: string;
+      taste: string;
+      features: string;
+    };
+
+export type FishAnalysis = {
+  identification: FishIdentification;
+  /** 오늘 남은 분석 횟수 */
+  remainingToday: number;
+};
