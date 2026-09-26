@@ -3,6 +3,8 @@
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // 앱은 항상 다크 테마(app.config userInterfaceStyle: 'dark'). 웹에서 시스템 설정을 따르지 않게 class 방식으로 둔다
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
