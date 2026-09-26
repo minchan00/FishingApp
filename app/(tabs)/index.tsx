@@ -1,18 +1,13 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import HomeSheet from '@/components/home/HomeSheet';
-import NicknameEditModal from '@/components/home/NicknameEditModal';
+import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import ObsPickerModal from '@/components/home/ObsPickerModal';
-import PasswordChangeModal from '@/components/home/PasswordChangeModal';
 import WeatherDetailModal from '@/components/WeatherDetailModal';
-import { deleteAccount, signOut } from '@/data/auth';
 import {
   DEFAULT_OBS, getConditionEmoji, getCurrentTideSlice, getFishingScore,
   getScoreGrade, kstHourNow, kstYmd, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
 import { useProfile } from '@/hooks/queries';
-import { useUser } from '@/hooks/useSession';
 import { useCurrentWeather, useTide, useTideForecastWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
 
@@ -23,11 +18,7 @@ const QUICK_ACTIONS: { icon: string; title: string; sub: string; href: Href }[] 
   { icon: '👥', title: '커뮤니티', sub: '낚시인 모임', href: '/community' },
 ];
 
-const MENU_ITEM = 'flex-row items-center py-4';
-const MENU_ITEM_DIVIDER = 'border-b border-white/[0.08]';
-
 export default function HomeScreen() {
-  const user = useUser();
   const profile = useProfile();
   const userNickname = profile.data?.nickname || '낚시꾼';
 
@@ -41,9 +32,6 @@ export default function HomeScreen() {
 
   const [obsModal, setObsModal] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
-  const [profileModal, setProfileModal] = useState(false);
-  const [editNicknameModal, setEditNicknameModal] = useState(false);
-  const [changePasswordModal, setChangePasswordModal] = useState(false);
 
   useEffect(() => {
     locateNearestObs()
@@ -51,33 +39,6 @@ export default function HomeScreen() {
       .then((nearest) => setSelectedObs(nearest ?? DEFAULT_OBS));
   }, []);
 
-  const handleLogout = () => {
-    Alert.alert('로그아웃', '로그아웃 할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃', style: 'destructive',
-        onPress: () => signOut().catch((e: unknown) => Alert.alert('오류', e instanceof Error ? e.message : '로그아웃에 실패했어요.')),
-      },
-    ]);
-  };
-
-  // 되돌릴 수 없는 작업이라 두 번 확인한다
-  const handleDeleteAccount = () => {
-    Alert.alert('회원 탈퇴', '탈퇴하면 그동안 기록한 낚시 일지, 게시글, 사진이 모두 영구 삭제되고 복구할 수 없어요.\n계속할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '계속', style: 'destructive',
-        onPress: () =>
-          Alert.alert('정말 탈퇴할까요?', '모든 데이터가 즉시 삭제돼요. 이 작업은 되돌릴 수 없어요.', [
-            { text: '취소', style: 'cancel' },
-            {
-              text: '탈퇴하기', style: 'destructive',
-              onPress: () => deleteAccount().catch((e: unknown) => Alert.alert('오류', e instanceof Error ? e.message : '회원 탈퇴에 실패했어요.')),
-            },
-          ]),
-      },
-    ]);
-  };
 
   const autoSelectObs = async () => {
     setObsModal(false);
@@ -244,10 +205,11 @@ export default function HomeScreen() {
             <Text className="text-white text-[22px] font-semibold mt-0.5">안녕하세요, {userNickname}님 👋</Text>
           </View>
           <TouchableOpacity
-            className="w-11 h-11 rounded-[22px] bg-ocean-surface items-center justify-center border-2 border-ocean-light"
-            onPress={() => setProfileModal(true)}
+            className="w-11 h-11 rounded-[22px] bg-card border border-card-border items-center justify-center"
+            onPress={() => router.push('/settings')}
+            accessibilityLabel="설정"
           >
-            <Text className="text-[20px]">🎣</Text>
+            <Text className="text-white text-[20px]">☰</Text>
           </TouchableOpacity>
         </View>
 
@@ -278,44 +240,6 @@ export default function HomeScreen() {
       <Modal visible={detailModal} animationType="slide" onRequestClose={() => setDetailModal(false)}>
         <WeatherDetailModal obs={obs} onClose={() => setDetailModal(false)} />
       </Modal>
-
-      {/* 프로필 모달 */}
-      <HomeSheet visible={profileModal} title={`🎣 ${userNickname}`} onClose={() => setProfileModal(false)}>
-        <TouchableOpacity className={`${MENU_ITEM} ${MENU_ITEM_DIVIDER}`} onPress={() => { setEditNicknameModal(true); setProfileModal(false); }}>
-          <Text className="text-[18px] w-8">✏️</Text>
-          <Text className="flex-1 text-white text-[15px]">정보 수정</Text>
-          <Text className="text-white/40 text-[20px]">›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className={`${MENU_ITEM} ${MENU_ITEM_DIVIDER}`} onPress={() => { setChangePasswordModal(true); setProfileModal(false); }}>
-          <Text className="text-[18px] w-8">🔑</Text>
-          <Text className="flex-1 text-white text-[15px]">비밀번호 변경</Text>
-          <Text className="text-white/40 text-[20px]">›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className={`${MENU_ITEM} ${MENU_ITEM_DIVIDER}`} onPress={() => { setProfileModal(false); handleLogout(); }}>
-          <Text className="text-[18px] w-8">🚪</Text>
-          <Text className="flex-1 text-accent-2 text-[15px]">로그아웃</Text>
-          <Text className="text-white/40 text-[20px]">›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className={MENU_ITEM} onPress={() => { setProfileModal(false); handleDeleteAccount(); }}>
-          <Text className="text-[18px] w-8">⚠️</Text>
-          <Text className="flex-1 text-white/40 text-[13px]">회원 탈퇴</Text>
-          <Text className="text-white/40 text-[20px]">›</Text>
-        </TouchableOpacity>
-      </HomeSheet>
-
-      {/* 닉네임 수정 모달 */}
-      <NicknameEditModal
-        visible={editNicknameModal}
-        currentNickname={userNickname}
-        onClose={() => setEditNicknameModal(false)}
-      />
-
-      {/* 비밀번호 변경 모달 */}
-      <PasswordChangeModal
-        visible={changePasswordModal}
-        email={user.email}
-        onClose={() => setChangePasswordModal(false)}
-      />
 
       {/* 관측소 선택 모달 */}
       <ObsPickerModal
