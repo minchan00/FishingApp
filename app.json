@@ -4,14 +4,13 @@
     "slug": "fishingapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a2a3a"
-    },
     "android": {
+      "package": "com.chani.fishingapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a2a3a"
@@ -31,6 +30,16 @@
         {
           "photosPermission": "낚시 사진을 선택하기 위해 갤러리 접근이 필요해요.",
           "cameraPermission": "어종 분석을 위해 카메라 접근이 필요해요."
+        }
+      ],
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0a2a3a",
+          "imageWidth": 200
         }
       ]
     ]
