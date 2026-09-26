@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { LogCard } from '@/components/log/LogCard';
 import { LogDetailModal } from '@/components/log/LogDetailModal';
 import { LogFormModal } from '@/components/log/LogFormModal';
 import { errorMessage } from '@/components/log/format';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
+import { IconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useDeleteLog, useLogs } from '@/hooks/queries';
 import { colors } from '@/theme/colors';
 import type { Catch, FishingLog } from '@/types/models';
 
 type Tab = '일지' | '통계';
 const TABS: readonly Tab[] = ['일지', '통계'];
-
-const STAT_CARD = 'mr-2 flex-1 items-center rounded-xl border border-card-border bg-card p-3';
-const SECTION_CARD = 'mb-3 rounded-[14px] border border-card-border bg-white/5 p-3.5';
 
 function computeStats(logs: FishingLog[]) {
   const allCatches = logs.flatMap((l) => l.catches);
@@ -26,6 +27,17 @@ function computeStats(logs: FishingLog[]) {
   allCatches.forEach((c) => speciesCount.set(c.species, (speciesCount.get(c.species) ?? 0) + c.count));
   const topSpecies = [...speciesCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   return { totalTrips: logs.length, totalCatch, maxFish, topSpecies };
+}
+
+function StatCard({ value, label }: { value: string | number; label: string }) {
+  return (
+    <Card className="flex-1">
+      <Text className="text-title text-ink" numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+      <Text className="mt-1 text-caption text-mute">{label}</Text>
+    </Card>
+  );
 }
 
 export default function LogScreen() {
@@ -78,36 +90,32 @@ export default function LogScreen() {
 
   if (logsQuery.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-ocean-deep">
-        <ActivityIndicator color={colors.accent} size="large" />
+      <View className="flex-1 items-center justify-center bg-bg">
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-ocean-deep">
-      <View className="flex-row items-start justify-between px-5 pb-2 pt-14">
-        <View>
-          <Text className="text-[20px] font-semibold text-white">📔 낚시 일지</Text>
-          <Text className="mt-0.5 text-[12px] text-muted">나의 낚시 기록</Text>
-        </View>
-        <TouchableOpacity className="rounded-xl bg-accent px-3.5 py-2" onPress={openNew}>
-          <Text className="text-[13px] font-semibold text-white">+ 기록</Text>
-        </TouchableOpacity>
-      </View>
+    <View className="flex-1 bg-bg">
+      <ScreenHeader title="낚시 일지" eyebrow="나의 낚시 기록" right={<IconButton icon="plus" label="일지 기록" onPress={openNew} />} />
 
-      <View className="mx-4 mb-3 flex-row rounded-xl bg-card p-1">
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            className={`flex-1 items-center rounded-[10px] py-2 ${activeTab === tab ? 'bg-accent' : ''}`}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text className={`text-[13px] font-medium ${activeTab === tab ? 'text-white' : 'text-muted'}`}>
-              {tab === '일지' ? '📋 일지' : '📊 통계'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* 일지 / 통계 전환 */}
+      <View className="mx-5 mb-2 flex-row rounded-field bg-surface p-1">
+        {TABS.map((tab) => {
+          const active = activeTab === tab;
+          return (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              className={`h-9 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-bg' : ''}`}
+            >
+              <Text className={`text-label font-semibold ${active ? 'text-ink' : 'text-mute'}`}>{tab}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {activeTab === '일지' ? (
@@ -116,75 +124,71 @@ export default function LogScreen() {
           keyExtractor={(log) => String(log.id)}
           renderItem={({ item }) => <LogCard log={item} onPress={setSelectedLogId} />}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
           ListEmptyComponent={
             logsQuery.isError ? (
-              <View className="items-center py-[60px]">
-                <Text className="mb-3 text-center text-[14px] text-muted">일지를 불러오지 못했어요.</Text>
-                <TouchableOpacity onPress={() => logsQuery.refetch()}>
-                  <Text className="text-[13px] font-semibold text-accent">다시 시도</Text>
-                </TouchableOpacity>
-              </View>
+              <EmptyState
+                icon="alert-circle"
+                title="일지를 불러오지 못했어요."
+                actionLabel="다시 시도"
+                onAction={() => logsQuery.refetch()}
+              />
             ) : (
-              <View className="items-center py-[60px]">
-                <Text className="mb-3 text-[48px]">📔</Text>
-                <Text className="text-center text-[14px] text-muted">
-                  아직 기록이 없어요!{'\n'}첫 낚시 일지를 작성해보세요 😊
-                </Text>
-              </View>
+              <EmptyState
+                icon="book-open"
+                title="아직 기록이 없어요!"
+                description="첫 낚시 일지를 작성해보세요"
+                actionLabel="일지 기록"
+                onAction={openNew}
+              />
             )
           }
           ListFooterComponent={<View className="h-[30px]" />}
         />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="px-4">
-            <View className="mb-3 flex-row">
-              <View className={STAT_CARD}>
-                <Text className="text-[20px] font-semibold text-white">{stats.totalTrips}</Text>
-                <Text className="mt-1 text-[10px] text-muted">총 출조</Text>
-              </View>
-              <View className={STAT_CARD}>
-                <Text className="text-[20px] font-semibold text-accent">{stats.totalCatch}</Text>
-                <Text className="mt-1 text-[10px] text-muted">총 포획</Text>
-              </View>
-              <View className={STAT_CARD}>
-                <Text className="text-[16px] font-semibold text-ocean-light">
-                  {stats.maxFish ? `${stats.maxFish.sizeCm}cm` : '-'}
-                </Text>
-                <Text className="mt-1 text-[10px] text-muted">최대 어획</Text>
-              </View>
-            </View>
-            {stats.maxFish && (
-              <View className={SECTION_CARD}>
-                <Text className="text-[14px] font-semibold text-white">🏆 최대 어획</Text>
-                <View className="mt-2.5 flex-row justify-between">
-                  <Text className="text-[15px] font-semibold text-white">{stats.maxFish.species}</Text>
-                  <Text className="text-[15px] font-semibold text-accent">{stats.maxFish.sizeCm}cm</Text>
-                </View>
-              </View>
-            )}
-            {stats.topSpecies.length > 0 && (
-              <View className={SECTION_CARD}>
-                <Text className="text-[14px] font-semibold text-white">🐟 어종별 포획 순위</Text>
-                {stats.topSpecies.map(([species, count], i) => (
-                  <View
-                    key={species}
-                    className="flex-row items-center justify-between border-b border-white/[0.08] py-2.5"
-                  >
-                    <View className="flex-row items-center">
-                      <Text className={`mr-2 text-[14px] font-semibold ${i === 0 ? 'text-accent' : 'text-muted'}`}>
-                        {i + 1}위
-                      </Text>
-                      <Text className="text-[14px] text-white">{species}</Text>
-                    </View>
-                    <Text className="text-[14px] font-semibold text-ocean-light">{count}마리</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pt-2 pb-8">
+          <View className="flex-row gap-2">
+            <StatCard value={stats.totalTrips} label="총 출조" />
+            <StatCard value={stats.totalCatch} label="총 포획" />
+            <StatCard value={stats.maxFish ? `${stats.maxFish.sizeCm}cm` : '-'} label="최대 어획" />
           </View>
-          <View className="h-[30px]" />
+
+          {stats.maxFish && (
+            <Card className="mt-3">
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="award" size={16} color={colors.sub} />
+                <Text className="text-label font-medium text-sub">최대 어획</Text>
+              </View>
+              <View className="mt-2 flex-row items-baseline justify-between">
+                <Text className="text-heading text-ink">{stats.maxFish.species}</Text>
+                <Text className="text-heading text-primary">{stats.maxFish.sizeCm}cm</Text>
+              </View>
+            </Card>
+          )}
+
+          {stats.topSpecies.length > 0 && (
+            <Card className="mt-3">
+              <View className="mb-1 flex-row items-center gap-1.5">
+                <Icon name="bar-chart-2" size={16} color={colors.sub} />
+                <Text className="text-label font-medium text-sub">어종별 포획 순위</Text>
+              </View>
+              {stats.topSpecies.map(([species, count], i) => (
+                <View
+                  key={species}
+                  className={`flex-row items-center justify-between py-3 ${i < stats.topSpecies.length - 1 ? 'border-b border-line' : ''}`}
+                >
+                  <View className="flex-row items-center">
+                    <Text className={`w-9 text-body font-semibold ${i === 0 ? 'text-primary' : 'text-mute'}`}>{i + 1}위</Text>
+                    <Text className="text-body text-ink">{species}</Text>
+                  </View>
+                  <Text className="text-body font-semibold text-sub">{count}마리</Text>
+                </View>
+              ))}
+            </Card>
+          )}
+
+          {logs.length === 0 && (
+            <EmptyState icon="bar-chart-2" title="아직 통계가 없어요" description="일지를 기록하면 통계가 쌓여요" />
+          )}
         </ScrollView>
       )}
 

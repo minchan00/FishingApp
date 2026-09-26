@@ -1,6 +1,7 @@
 // 날씨(OpenWeatherMap)·조위(국립해양조사원, data.go.kr) 조회와 낚시 점수 계산.
 import { addDays, format, isSameDay, parseISO } from 'date-fns';
 import * as Location from 'expo-location';
+import type { IconName } from '@/components/ui/Icon';
 import { env } from '@/lib/env';
 import { colors } from '@/theme/colors';
 
@@ -189,6 +190,19 @@ export function getConditionEmoji(main: string | undefined): string {
   }
 }
 
+/** 날씨 상태에 맞는 선 아이콘 이름 (components/ui/Icon의 Feather 이름) */
+export function getConditionIcon(main: string | undefined): IconName {
+  switch (main) {
+    case 'Clear': return 'sun';
+    case 'Clouds': return 'cloud';
+    case 'Rain': return 'cloud-rain';
+    case 'Snow': return 'cloud-snow';
+    case 'Thunderstorm': return 'cloud-lightning';
+    case 'Drizzle': return 'cloud-drizzle';
+    default: return 'cloud';
+  }
+}
+
 // ── 조위 (data.go.kr) ──────────────────────────
 // 공공데이터포털 응답은 { header, body } 또는 { response: { header, body } } 로 오고,
 // item이 1건이면 배열이 아니라 객체로 오기도 한다. 필드도 숫자/문자열이 섞여서 모두 런타임에 검사한다.
@@ -348,11 +362,11 @@ export function getFishingScore(windSpeed: number, tideEvents: TideEvent[] | nul
   return Math.max(0, Math.min(100, score));
 }
 
-export type ScoreGrade = { grade: 'A' | 'B' | 'C' | 'D'; label: string; color: string };
+export type ScoreGrade = { grade: 'A' | 'B' | 'C' | 'D'; label: string; color: string; soft: string };
 
 export function getScoreGrade(score: number): ScoreGrade {
-  if (score >= 85) return { grade: 'A', label: '낚시 최적 🔥', color: colors.oceanLight };
-  if (score >= 70) return { grade: 'B', label: '낚시 양호 👍', color: '#4caf50' };
-  if (score >= 50) return { grade: 'C', label: '낚시 보통 😐', color: colors.accent };
-  return { grade: 'D', label: '낚시 비추 💨', color: colors.accent2 };
+  if (score >= 85) return { grade: 'A', label: '낚시 최적', color: colors.primary, soft: colors.primarySoft };
+  if (score >= 70) return { grade: 'B', label: '낚시 양호', color: colors.success, soft: colors.successSoft };
+  if (score >= 50) return { grade: 'C', label: '낚시 보통', color: colors.warning, soft: colors.warningSoft };
+  return { grade: 'D', label: '낚시 비추', color: colors.danger, soft: colors.dangerSoft };
 }

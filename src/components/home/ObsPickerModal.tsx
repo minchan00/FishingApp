@@ -1,8 +1,12 @@
 import { FlashList } from '@shopify/flash-list';
 import { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { TextInput, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
+import { ListRow } from '@/components/ui/ListRow';
+import { BottomSheet } from '@/components/ui/Sheet';
 import { OBS_LIST, type ObsStation } from '@/data/weather';
-import HomeSheet, { SHEET_PLACEHOLDER } from './HomeSheet';
+import { colors } from '@/theme/colors';
 
 type Props = {
   visible: boolean;
@@ -23,20 +27,16 @@ export default function ObsPickerModal({ visible, selected, onSelect, onAutoSele
   };
 
   return (
-    <HomeSheet visible={visible} title="🌊 지역 선택" onClose={onClose}>
-      <TouchableOpacity className="bg-accent/15 border border-accent rounded-xl p-3 items-center mb-3" onPress={onAutoSelect}>
-        <Text className="text-accent text-[13px] font-medium">📍 내 위치에서 가장 가까운 지역 자동 선택</Text>
-      </TouchableOpacity>
-      <View className="flex-row items-center bg-card border border-card-border rounded-xl px-3.5 py-2.5 mb-2.5">
-        <Text className="text-[14px] text-muted">🔍</Text>
-        <TextInput
-          className="flex-1 text-white text-[13px] ml-2"
-          placeholder="지역 이름 검색..."
-          placeholderTextColor={SHEET_PLACEHOLDER}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
+    <BottomSheet visible={visible} title="지역 선택" onClose={onClose}>
+      <Button
+        label="내 위치에서 가장 가까운 지역 자동 선택"
+        variant="secondary"
+        size="md"
+        icon="navigation"
+        onPress={onAutoSelect}
+        className="mb-3"
+      />
+      <ObsSearchField value={search} onChangeText={setSearch} />
       <FlashList
         data={filtered}
         keyExtractor={(item) => item.code}
@@ -44,18 +44,33 @@ export default function ObsPickerModal({ visible, selected, onSelect, onAutoSele
         renderItem={({ item }) => {
           const active = selected.code === item.code;
           return (
-            <TouchableOpacity
-              className={`py-3.5 px-4 border-b border-white/[0.08] ${active ? 'bg-accent/[0.08]' : ''}`}
+            <ListRow
+              title={item.name}
               onPress={() => select(item)}
-            >
-              <Text className={`text-[14px] ${active ? 'text-accent font-semibold' : 'text-white'}`}>
-                {active ? '✅ ' : ''}{item.name}
-              </Text>
-            </TouchableOpacity>
+              chevron={false}
+              right={active ? <Icon name="check" size={20} color={colors.primary} /> : undefined}
+            />
           );
         }}
         style={{ maxHeight: 350 }}
       />
-    </HomeSheet>
+    </BottomSheet>
+  );
+}
+
+/** 지역 이름 검색 입력칸 (돋보기 아이콘 포함). 일자별 예보 모달의 지역 선택에서도 쓴다 */
+export function ObsSearchField({ value, onChangeText, autoFocus }: { value: string; onChangeText: (v: string) => void; autoFocus?: boolean }) {
+  return (
+    <View className="mb-2 h-[44px] flex-row items-center rounded-field bg-surface px-3.5">
+      <Icon name="search" size={18} color={colors.mute} />
+      <TextInput
+        className="ml-2 flex-1 text-body text-ink"
+        placeholder="지역 이름 검색..."
+        placeholderTextColor={colors.mute}
+        value={value}
+        onChangeText={onChangeText}
+        autoFocus={autoFocus}
+      />
+    </View>
   );
 }

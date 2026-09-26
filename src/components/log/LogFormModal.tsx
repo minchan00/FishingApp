@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { AppModal, SheetPanel } from '@/components/ui/Sheet';
-import { Image } from 'expo-image';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
+import { Icon } from '@/components/ui/Icon';
+import { BottomSheet } from '@/components/ui/Sheet';
+import { TextField } from '@/components/ui/TextField';
 import { SPECIES_OPTIONS, WEATHER_OPTIONS } from '@/constants/fishing';
 import { useCreatePost, useSaveLog } from '@/hooks/queries';
 import { logFormSchema, type LogFormOutput, type LogFormValues } from '@/schemas/log';
 import { colors } from '@/theme/colors';
 import type { FishingLog } from '@/types/models';
 import { formatCatch, todayYmd } from './format';
-import { FieldError, FormTextInput } from './FormTextInput';
+import { CheckRow, FieldLabel, InlineError, PhotoPicker, SheetKeyboardBody } from './FormParts';
 import { pickImageFromLibrary } from './pickImage';
 
 const emptyForm = (): LogFormValues => ({
@@ -37,10 +40,6 @@ const formFromLog = (log: FishingLog): LogFormValues => ({
     count: String(c.count),
   })),
 });
-
-const INPUT = 'mb-2.5 rounded-xl border border-card-border bg-card p-3.5 text-[14px] text-white';
-const chipClass = (active: boolean) =>
-  `rounded-[20px] border px-3 py-[5px] ${active ? 'border-accent bg-accent' : 'border-card-border bg-card'}`;
 
 type Props = {
   visible: boolean;
@@ -99,167 +98,190 @@ export function LogFormModal({ visible, editingLog, onClose }: Props) {
   };
 
   return (
-    <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-        <View className="flex-1 justify-end bg-black/70">
-          <SheetPanel className="max-h-[92%] rounded-t-3xl bg-ocean-mid p-5">
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="flex-1 text-[16px] font-semibold text-white">
-                {editingLog ? '✏️ 낚시 일지 수정' : '📔 낚시 일지 작성'}
-              </Text>
-              <TouchableOpacity onPress={onClose}>
-                <Text className="text-[20px] text-muted">✕</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <FormTextInput control={control} name="fishedOn" className={INPUT} placeholder="날짜 (YYYY-MM-DD)" />
-              <FormTextInput control={control} name="location" className={INPUT} placeholder="장소 *" />
-              <FormTextInput
-                control={control}
-                name="duration"
-                className={INPUT}
-                placeholder="낚시 시간 (시간)"
-                keyboardType="numeric"
-              />
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={editingLog ? '낚시 일지 수정' : '낚시 일지 작성'}
+      maxHeightClass="max-h-[92%]"
+    >
+      <SheetKeyboardBody>
+        <ScrollView className="shrink" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View className="gap-4 pb-2">
+            <Controller
+              control={control}
+              name="fishedOn"
+              render={({ field, fieldState }) => (
+                <TextField
+                  ref={field.ref}
+                  label="날짜"
+                  placeholder="YYYY-MM-DD"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="location"
+              render={({ field, fieldState }) => (
+                <TextField
+                  ref={field.ref}
+                  label="장소 *"
+                  placeholder="장소"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="duration"
+              render={({ field, fieldState }) => (
+                <TextField
+                  ref={field.ref}
+                  label="낚시 시간 (시간)"
+                  placeholder="예: 3"
+                  keyboardType="numeric"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
 
-              <Text className="mb-2 text-[12px] text-muted">날씨</Text>
+            <View>
+              <FieldLabel>날씨</FieldLabel>
               <Controller
                 control={control}
                 name="weather"
-                render={({ field }) => (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                    {WEATHER_OPTIONS.map((w) => (
-                      <TouchableOpacity key={w} onPress={() => field.onChange(w)} className={`mr-2 ${chipClass(field.value === w)}`}>
-                        <Text className={`text-[12px] ${field.value === w ? 'text-white' : 'text-muted'}`}>{w}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                render={({ field, fieldState }) => (
+                  <>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
+                      {WEATHER_OPTIONS.map((w) => (
+                        <Chip key={w} label={w} selected={field.value === w} onPress={() => field.onChange(w)} />
+                      ))}
+                    </ScrollView>
+                    <InlineError message={fieldState.error?.message} />
+                  </>
                 )}
               />
+            </View>
 
+            <View>
               <View className="mb-2 flex-row items-center justify-between">
-                <Text className="mb-2 text-[12px] text-muted">🎣 어획 기록</Text>
-                <TouchableOpacity
+                <Text className="text-label font-medium text-sub">어획 기록</Text>
+                <Button
+                  label="추가"
+                  icon="plus"
+                  variant="ghost"
+                  size="md"
+                  block={false}
                   onPress={() => append({ species: '광어', size: '', count: '1' })}
-                  className="rounded-lg border border-accent bg-accent/15 px-3 py-[5px]"
-                >
-                  <Text className="text-[13px] font-semibold text-accent">+ 추가</Text>
-                </TouchableOpacity>
+                />
               </View>
-              {fields.map((f, i) => {
-                const rowErrors = formState.errors.catches?.[i];
-                return (
-                  <View key={f.id} className="mb-2.5 rounded-xl bg-white/5 p-2.5">
-                    <Controller
-                      control={control}
-                      name={`catches.${i}.species`}
-                      render={({ field }) => (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-1.5">
-                          {SPECIES_OPTIONS.map((s) => (
-                            <TouchableOpacity
-                              key={s}
-                              onPress={() => field.onChange(s)}
-                              className={`mr-1.5 ${chipClass(field.value === s)}`}
-                            >
-                              <Text className={field.value === s ? 'text-[11px] text-white' : 'text-[12px] text-muted'}>{s}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      )}
-                    />
-                    <View className="flex-row">
-                      <FormTextInput
+              {fields.length === 0 ? <Text className="text-label text-mute">잡은 물고기가 있으면 추가해주세요</Text> : null}
+              <View className="gap-2.5">
+                {fields.map((f, i) => {
+                  const rowErrors = formState.errors.catches?.[i];
+                  return (
+                    <View key={f.id} className="rounded-card border border-line p-3">
+                      <Controller
                         control={control}
-                        name={`catches.${i}.size`}
-                        showError={false}
-                        className={`${INPUT} mr-2 flex-1`}
-                        placeholder="크기(cm)"
-                        keyboardType="numeric"
+                        name={`catches.${i}.species`}
+                        render={({ field }) => (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1.5">
+                            {SPECIES_OPTIONS.map((s) => (
+                              <Chip key={s} label={s} selected={field.value === s} onPress={() => field.onChange(s)} />
+                            ))}
+                          </ScrollView>
+                        )}
                       />
-                      <FormTextInput
-                        control={control}
-                        name={`catches.${i}.count`}
-                        showError={false}
-                        className={`${INPUT} mr-2 w-[70px]`}
-                        placeholder="마리수"
-                        keyboardType="numeric"
-                      />
-                      <TouchableOpacity onPress={() => remove(i)} className="justify-center px-2">
-                        <Text className="text-[18px] text-accent-2">✕</Text>
-                      </TouchableOpacity>
+                      <InlineError message={rowErrors?.species?.message} />
+                      <View className="mt-2.5 flex-row items-start gap-2">
+                        <Controller
+                          control={control}
+                          name={`catches.${i}.size`}
+                          render={({ field }) => (
+                            <TextField
+                              ref={field.ref}
+                              className="flex-1"
+                              placeholder="크기(cm)"
+                              keyboardType="numeric"
+                              value={field.value}
+                              onChangeText={field.onChange}
+                              onBlur={field.onBlur}
+                              error={rowErrors?.size?.message}
+                            />
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name={`catches.${i}.count`}
+                          render={({ field }) => (
+                            <TextField
+                              ref={field.ref}
+                              className="w-[84px]"
+                              placeholder="마리수"
+                              keyboardType="numeric"
+                              value={field.value}
+                              onChangeText={field.onChange}
+                              onBlur={field.onBlur}
+                              error={rowErrors?.count?.message}
+                            />
+                          )}
+                        />
+                        <Pressable
+                          onPress={() => remove(i)}
+                          accessibilityLabel="어획 기록 삭제"
+                          className="h-[48px] w-10 items-center justify-center rounded-field active:bg-surface"
+                        >
+                          <Icon name="trash-2" size={18} color={colors.mute} />
+                        </Pressable>
+                      </View>
                     </View>
-                    <FieldError message={rowErrors?.species?.message} />
-                    <FieldError message={rowErrors?.size?.message} />
-                    <FieldError message={rowErrors?.count?.message} />
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
+            </View>
 
-              <FormTextInput
-                control={control}
-                name="memo"
-                className={`${INPUT} h-20`}
-                style={{ textAlignVertical: 'top' }}
-                placeholder="메모 (날씨, 미끼, 포인트 등)"
-                multiline
-              />
+            <Controller
+              control={control}
+              name="memo"
+              render={({ field, fieldState }) => (
+                <TextField
+                  ref={field.ref}
+                  label="메모"
+                  placeholder="메모 (날씨, 미끼, 포인트 등)"
+                  multiline
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
 
-              {/* 사진 추가 */}
-              <TouchableOpacity
-                className="mb-2.5 items-center rounded-xl border border-white/15 bg-card p-3.5"
-                onPress={pickImage}
-              >
-                <Text className="text-[13px] text-muted">{imageUri ? '📷 사진 변경' : '📷 사진 추가 (선택)'}</Text>
-              </TouchableOpacity>
-              {imageUri && (
-                <View className="mb-3">
-                  <Image
-                    source={{ uri: imageUri }}
-                    style={{ width: '100%', height: 180, borderRadius: 10 }}
-                    contentFit="cover"
-                    transition={150}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setValue('imageUri', null)}
-                    className="mt-1.5 self-end rounded-md bg-black/50 px-2.5 py-1"
-                  >
-                    <Text className="text-[11px] text-white">✕ 사진 제거</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+            <View>
+              <FieldLabel>사진</FieldLabel>
+              <PhotoPicker uri={imageUri} onPick={pickImage} onRemove={() => setValue('imageUri', null)} emptyLabel="사진 추가 (선택)" />
+            </View>
 
-              {/* 커뮤니티 공유 (수정 모드에서는 숨김) */}
-              {!editingLog && (
-                <TouchableOpacity
-                  className="mb-2.5 flex-row items-center rounded-xl border border-accent/30 bg-accent/[0.08] p-3.5"
-                  onPress={() => setShareToComm(!shareToComm)}
-                >
-                  <View
-                    className={`h-5 w-5 rounded-full border-2 ${shareToComm ? 'border-accent bg-accent' : 'border-white/30'}`}
-                  />
-                  <Text className={`ml-2.5 text-[13px] ${shareToComm ? 'text-accent' : 'text-muted'}`}>
-                    👥 커뮤니티 인증샷에도 공유하기
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-            <TouchableOpacity
-              className="mt-1 items-center rounded-xl bg-accent py-3.5"
-              onPress={handleSubmit(submitLog)}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <View className="flex-row items-center">
-                  <ActivityIndicator color={colors.white} className="mr-2" />
-                  <Text className="text-[15px] font-semibold text-white">저장 중...</Text>
-                </View>
-              ) : (
-                <Text className="text-[15px] font-semibold text-white">{editingLog ? '수정 저장' : '일지 등록'}</Text>
-              )}
-            </TouchableOpacity>
-          </SheetPanel>
+            {/* 커뮤니티 공유 (수정 모드에서는 숨김) */}
+            {!editingLog && (
+              <CheckRow checked={shareToComm} onPress={() => setShareToComm(!shareToComm)} label="커뮤니티 인증샷에도 공유하기" />
+            )}
+          </View>
+        </ScrollView>
+
+        <View className="pt-3">
+          <Button label={editingLog ? '수정 저장' : '일지 등록'} onPress={handleSubmit(submitLog)} loading={submitting} />
         </View>
-      </KeyboardAvoidingView>
-    </AppModal>
+      </SheetKeyboardBody>
+    </BottomSheet>
   );
 }

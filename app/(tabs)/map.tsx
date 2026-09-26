@@ -1,13 +1,18 @@
 import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { NaverMapMarkerOverlay, NaverMapView, type Coord, type NaverMapViewRef } from '@mj-studio/react-native-naver-map';
 import { AddPointModal } from '@/components/map/AddPointModal';
 import { distanceKm, formatDistance, type Coords } from '@/components/map/distance';
 import { MARKER_APPEARANCE, markerKind, ZOOM } from '@/components/map/markerAppearance';
 import { PointDetailModal } from '@/components/map/PointDetailModal';
-import { chipClass, chipTextClass, cls, PLACEHOLDER_COLOR } from '@/components/map/ui';
+import { Badge, PointBadges } from '@/components/map/ui';
+import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useCreatePoint, useDeletePoint, useFavoritePointIds, usePoints, useToggleFavorite } from '@/hooks/queries';
 import { useUser } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
@@ -142,25 +147,48 @@ export default function MapScreen() {
     ]);
   };
 
-  const ownerLabel = (point: FishingPoint) =>
-    point.rating > 0
-      ? `⭐ ${point.rating}`
-      : point.isDefault
-        ? '기본 포인트'
-        : `🎣 ${isMine(point) ? '내 포인트' : '공유 포인트'}`;
-
   return (
-    <View className="flex-1 bg-ocean-deep">
-      <View className="px-[20px] pt-[56px] pb-[8px]">
-        <Text className="text-white text-[20px] font-semibold">🗺️ 낚시 포인트</Text>
-        <Text className="text-muted text-[12px] mt-[2px]">{userLocation ? '📍 내 위치 기준 가까운 순' : '주변 낚시 명소'}</Text>
+    <View className="flex-1 bg-bg">
+      <ScreenHeader title="낚시 포인트" eyebrow={userLocation ? '내 위치 기준 가까운 순' : '주변 낚시 명소'} />
+
+      {/* 검색 + 필터 */}
+      <View className="mx-5 h-[44px] flex-row items-center rounded-field bg-surface pl-3.5 pr-1">
+        <Icon name="search" size={18} color={colors.mute} />
+        <TextInput
+          className="ml-2 flex-1 text-body text-ink"
+          placeholder="포인트 이름, 지역 검색..."
+          placeholderTextColor={colors.mute}
+          value={search}
+          onChangeText={setSearch}
+        />
+        <Pressable
+          onPress={() => setShowFavorites(!showFavorites)}
+          accessibilityRole="button"
+          accessibilityLabel="즐겨찾기만 보기"
+          accessibilityState={{ selected: showFavorites }}
+          className={`h-9 w-9 items-center justify-center rounded-full ${showFavorites ? 'bg-primary-soft' : 'active:bg-surface-strong'}`}
+        >
+          <Icon name="star" size={18} color={showFavorites ? colors.primary : colors.mute} />
+        </Pressable>
       </View>
 
-      <View className="h-[220px] mx-[16px] mt-[8px] rounded-[16px] overflow-hidden border border-card-border">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 grow-0" contentContainerClassName="gap-2 px-5">
+        {FILTERS.map((f) => (
+          <Chip key={f} label={f} selected={activeFilter === f} onPress={() => setActiveFilter(f)} />
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2 grow-0" contentContainerClassName="gap-2 px-5">
+        {SPECIES.map((s) => (
+          <Chip key={s} label={s} selected={activeSpecies === s} onPress={() => setActiveSpecies(s)} />
+        ))}
+      </ScrollView>
+
+      <View className="mx-5 mt-3 h-[240px] overflow-hidden rounded-card border border-line">
         <NaverMapView
           ref={mapRef}
           style={{ flex: 1 }}
-          mapType="Hybrid"
+          mapType="Basic"
           initialCamera={userLocation ? { ...userLocation, zoom: ZOOM.userArea } : FALLBACK_CAMERA}
           isShowLocationButton
           isShowZoomControls={false}
@@ -181,8 +209,8 @@ export default function MapScreen() {
                 width={selectedPointId === point.id ? 32 : 26}
                 height={selectedPointId === point.id ? 42 : 34}
                 zIndex={selectedPointId === point.id ? 10 : look.zIndex}
-                caption={{ text: point.name, color: colors.white, haloColor: colors.oceanDeep, textSize: 11 }}
-                subCaption={look.subCaption ? { text: look.subCaption, color: colors.accent, haloColor: colors.oceanDeep } : undefined}
+                caption={{ text: point.name, color: colors.ink, haloColor: colors.white, textSize: 11 }}
+                subCaption={look.subCaption ? { text: look.subCaption, color: colors.primary, haloColor: colors.white } : undefined}
                 isHideCollidedCaptions
                 onTap={() => onMarkerTap(point)}
               />
@@ -190,121 +218,87 @@ export default function MapScreen() {
           })}
         </NaverMapView>
         {calloutPoint && (
-          <TouchableOpacity
-            className="absolute top-[10px] left-[10px] right-[10px] bg-ocean-mid rounded-[10px] p-[10px] border border-[rgba(255,255,255,0.2)]"
-            activeOpacity={0.85}
+          <Pressable
+            className="absolute left-2 right-2 top-2 rounded-card border border-line bg-bg p-3.5 active:bg-surface"
             onPress={() => openDetail(calloutPoint)}
+            accessibilityHint="탭하여 상세 보기"
           >
-            <Text className="text-white text-[13px] font-semibold mb-[2px]">{calloutPoint.name}</Text>
-            <Text className="text-muted text-[11px]">{calloutPoint.address}</Text>
-            {userLocation && (
-              <Text className="text-ocean-light text-[11px] mt-[2px]">📍 {formatDistance(userLocation, calloutPoint.lat, calloutPoint.lng)}</Text>
-            )}
-            <Text className="text-accent text-[11px] mt-[4px]">{ownerLabel(calloutPoint)}</Text>
-            <Text className="text-ocean-light text-[11px] mt-[4px]">탭하여 상세 보기</Text>
-          </TouchableOpacity>
+            <View className="flex-row items-start gap-2">
+              <View className="flex-1">
+                <Text className="text-heading text-ink" numberOfLines={1}>{calloutPoint.name}</Text>
+                <Text className="mt-0.5 text-label text-mute" numberOfLines={1}>
+                  {calloutPoint.address}
+                  {userLocation ? ` · ${formatDistance(userLocation, calloutPoint.lat, calloutPoint.lng)}` : ''}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => toggleFavorite(calloutPoint.id)}
+                accessibilityLabel={isFavorite(calloutPoint.id) ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                hitSlop={8}
+                className="-mr-1 -mt-1 h-9 w-9 items-center justify-center rounded-full active:bg-surface"
+              >
+                <Icon name="star" size={20} color={isFavorite(calloutPoint.id) ? colors.primary : colors.mute} />
+              </Pressable>
+            </View>
+            <View className="mt-2 flex-row items-center justify-between gap-2">
+              <View className="flex-1 flex-row flex-wrap gap-1.5">
+                <PointBadges point={calloutPoint} isMine={isMine(calloutPoint)} />
+              </View>
+              <Text className="text-caption text-primary">탭하여 상세 보기</Text>
+            </View>
+          </Pressable>
         )}
-        <TouchableOpacity className="absolute bottom-[10px] right-[10px] bg-accent rounded-[20px] px-[14px] py-[7px]" onPress={() => setAddModal(true)}>
-          <Text className="text-white text-[13px] font-semibold">+ 포인트 추가</Text>
-        </TouchableOpacity>
+        <View className="absolute bottom-2.5 right-2.5">
+          <Button label="포인트 추가" icon="plus" size="md" block={false} onPress={() => setAddModal(true)} />
+        </View>
       </View>
 
-      <View className="flex-row items-center bg-card border border-card-border rounded-[12px] mx-[16px] mt-[10px] mb-[8px] px-[14px] py-[10px]">
-        <Text className="text-[14px] text-muted">🔍</Text>
-        <TextInput
-          className="flex-1 text-white text-[13px] ml-[8px]"
-          placeholder="포인트 이름, 지역 검색..."
-          placeholderTextColor={PLACEHOLDER_COLOR}
-          value={search}
-          onChangeText={setSearch}
-        />
-        <TouchableOpacity
-          onPress={() => setShowFavorites(!showFavorites)}
-          className={`p-[4px] rounded-[8px]${showFavorites ? ' bg-[rgba(244,168,38,0.2)]' : ''}`}
-        >
-          <Text className="text-[14px]">⭐</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-[4px] grow-0" contentContainerClassName="px-[16px]">
-        {FILTERS.map((f) => (
-          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} className={`${chipClass(activeFilter === f)} mr-[8px]`}>
-            <Text className={chipTextClass(activeFilter === f, true)}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-[6px] grow-0" contentContainerClassName="px-[16px]">
-        {SPECIES.map((s) => (
-          <TouchableOpacity key={s} onPress={() => setActiveSpecies(s)} className={`${chipClass(activeSpecies === s, 'ocean')} mr-[8px]`}>
-            <Text className={chipTextClass(activeSpecies === s, true)}>{s}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <View className="flex-1">
+      <View className="mt-2 flex-1">
         <FlashList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
           // renderItem이 선택·즐겨찾기·내 위치에 따라 달라지므로 바뀔 때 다시 그리게 한다
           extraData={[selectedPointId, favoriteIds, userLocation, user.id]}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
           ListEmptyComponent={
             pointsQuery.isLoading ? (
-              <ActivityIndicator color={colors.accent} className="mt-[20px]" />
+              <ActivityIndicator color={colors.primary} className="mt-[20px]" />
             ) : pointsQuery.error ? (
-              <Text className="text-accent-2 text-[13px] text-center mt-[20px]">
-                포인트를 불러오지 못했어요.{'\n'}{pointsQuery.error.message}
-              </Text>
+              <EmptyState icon="alert-circle" title="포인트를 불러오지 못했어요." description={pointsQuery.error.message} />
             ) : null
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              className={`border rounded-[14px] p-[14px] mb-[10px] ${selectedPointId === item.id ? 'border-accent bg-[rgba(244,168,38,0.08)]' : 'bg-card border-card-border'}`}
-              onPress={() => { moveToPoint(item); openDetail(item); }}
-              activeOpacity={0.8}
-            >
-              <View className="flex-row justify-between items-start mb-[8px]">
+          renderItem={({ item }) => {
+            const selected = selectedPointId === item.id;
+            const fav = isFavorite(item.id);
+            return (
+              <Pressable
+                className={`flex-row items-start gap-3 border-b border-line px-5 py-3.5 ${selected ? 'bg-primary-soft' : 'active:bg-surface'}`}
+                onPress={() => { moveToPoint(item); openDetail(item); }}
+              >
                 <View className="flex-1">
-                  <View className="flex-row items-center">
-                    {isFavorite(item.id) && <Text className="text-[12px] mr-[4px]">⭐</Text>}
-                    <Text className="text-white text-[14px] font-medium">{item.name}</Text>
-                    {!item.isDefault && !isMine(item) && <Text className="text-ocean-light text-[10px] ml-[6px]">공유</Text>}
-                    {isMine(item) && <Text className="text-accent text-[10px] ml-[6px]">내 포인트</Text>}
-                  </View>
-                  <Text className="text-muted text-[11px] mt-[2px]">
+                  <Text className="text-body font-semibold text-ink" numberOfLines={1}>{item.name}</Text>
+                  <Text className="mt-0.5 text-caption text-mute" numberOfLines={1}>
                     {item.address}
                     {userLocation ? ` · ${formatDistance(userLocation, item.lat, item.lng)}` : ''}
                   </Text>
-                </View>
-                <View className="flex-row items-center">
-                  {item.hot && (
-                    <View className="bg-[rgba(244,168,38,0.2)] border border-accent rounded-[6px] px-[8px] py-[3px]">
-                      <Text className="text-accent text-[10px] font-semibold">🔥 핫</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity onPress={() => toggleFavorite(item.id)} className="ml-[8px] p-[4px]">
-                    <Text className="text-[18px]">{isFavorite(item.id) ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View className="flex-row flex-wrap">
-                <View className="bg-[rgba(42,159,196,0.2)] border border-ocean-light rounded-[6px] px-[8px] py-[3px]">
-                  <Text className={cls.tagText}>{item.type}</Text>
-                </View>
-                {item.species.map((s) => (
-                  <View key={s} className="bg-[rgba(255,255,255,0.08)] rounded-[6px] px-[8px] py-[3px] ml-[6px]">
-                    <Text className={cls.tagText}>{s}</Text>
+                  <View className="mt-2 flex-row flex-wrap gap-1.5">
+                    <PointBadges point={item} isMine={isMine(item)} />
+                    <Badge label={item.type} />
+                    {item.species.map((s) => (
+                      <Badge key={s} label={s} />
+                    ))}
                   </View>
-                ))}
-                {item.rating > 0 && (
-                  <View className="bg-[rgba(255,255,255,0.08)] rounded-[6px] px-[8px] py-[3px] ml-[6px]">
-                    <Text className={cls.tagText}>⭐ {item.rating}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          )}
+                </View>
+                <Pressable
+                  onPress={() => toggleFavorite(item.id)}
+                  accessibilityLabel={fav ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                  hitSlop={8}
+                  className="-mr-2 h-9 w-9 items-center justify-center rounded-full active:bg-surface-strong"
+                >
+                  <Icon name="star" size={20} color={fav ? colors.primary : colors.mute} />
+                </Pressable>
+              </Pressable>
+            );
+          }}
           ListFooterComponent={<View className="h-[20px]" />}
         />
       </View>

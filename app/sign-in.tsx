@@ -2,10 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
-import AuthFieldError from '@/components/ui/AuthFieldError';
+import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
+import { TextField } from '@/components/ui/TextField';
 import { signIn, signInWithKakao, signUp } from '@/data/auth';
 import { captureError } from '@/lib/sentry';
 import {
@@ -13,12 +14,6 @@ import {
 } from '@/schemas/auth';
 import { NICKNAME_MAX } from '@/schemas/profile';
 import { colors } from '@/theme/colors';
-
-// 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%)
-const KAKAO_LABEL = 'rgba(0,0,0,0.85)';
-const PLACEHOLDER = 'rgba(255,255,255,0.4)';
-
-const INPUT_CLASS = 'w-full bg-card border border-white/15 rounded-[14px] p-4 text-white text-[14px] mb-3';
 
 type Mode = 'login' | 'register';
 
@@ -71,7 +66,7 @@ export default function SignInScreen() {
     try {
       const { needsEmailConfirm } = await signUp(email, password, nickname);
       if (needsEmailConfirm) {
-        Alert.alert('📧 이메일을 확인해주세요', `${email}로 보낸 인증 메일의 링크를 누른 뒤 로그인해주세요.`);
+        Alert.alert('이메일을 확인해주세요', `${email}로 보낸 인증 메일의 링크를 누른 뒤 로그인해주세요.`);
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : '';
@@ -82,120 +77,118 @@ export default function SignInScreen() {
   const onSubmit = handleSubmit(mode === 'login' ? handleLogin : handleRegister);
 
   return (
-    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView className="flex-1 bg-bg" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerClassName="grow bg-ocean-deep items-center justify-center p-8"
+        contentContainerClassName="grow justify-center bg-bg px-6 py-12"
         keyboardShouldPersistTaps="handled"
       >
-        <Text className="text-[64px] mb-2">🎣</Text>
-        <Text className="text-white text-[26px] font-bold mb-1.5">낚시 일지</Text>
-        <Text className="text-white/[0.55] text-[13px] mb-10">바다와 함께하는 낚시 기록</Text>
-
-        <TouchableOpacity
-          className="w-full bg-[#FEE500] rounded-xl py-4 items-center"
-          onPress={handleKakao}
-          disabled={busy}
-          accessibilityRole="button"
-        >
-          {kakaoLoading
-            ? <ActivityIndicator color={KAKAO_LABEL} />
-            : <Text className="text-black/[0.85] text-[16px] font-semibold">카카오로 시작하기</Text>}
-        </TouchableOpacity>
-
-        <View className="flex-row items-center w-full my-6">
-          <View className="flex-1 bg-white/25" style={{ height: StyleSheet.hairlineWidth }} />
-          <Text className="text-white/50 text-[12px] mx-3">또는 이메일로</Text>
-          <View className="flex-1 bg-white/25" style={{ height: StyleSheet.hairlineWidth }} />
+        <View className="mb-10 items-center">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary-soft">
+            <Icon name="anchor" size={30} color={colors.primary} />
+          </View>
+          <Text className="text-display text-ink">낚시 일지</Text>
+          <Text className="mt-1 text-body text-sub">바다와 함께하는 낚시 기록</Text>
         </View>
 
-        <View className="flex-row bg-card rounded-[14px] p-1 mb-6 w-full">
+        {/* 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%) — Button kakao 변형이 맞춘다 */}
+        <Button label="카카오로 시작하기" variant="kakao" icon="message-circle" onPress={handleKakao} loading={kakaoLoading} disabled={busy} />
+
+        <View className="my-6 flex-row items-center">
+          <View className="flex-1 bg-line" style={{ height: StyleSheet.hairlineWidth }} />
+          <Text className="mx-3 text-caption text-mute">또는 이메일로</Text>
+          <View className="flex-1 bg-line" style={{ height: StyleSheet.hairlineWidth }} />
+        </View>
+
+        <View className="mb-5 flex-row rounded-field bg-surface p-1">
           {(['login', 'register'] as const).map((m) => {
             const active = mode === m;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={m}
-                className={`flex-1 py-2.5 items-center rounded-xl ${active ? 'bg-accent' : ''}`}
+                className={`h-10 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-bg' : ''}`}
                 onPress={() => switchMode(m)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
               >
-                <Text className={`text-[14px] ${active ? 'text-white font-bold' : 'text-white/[0.55] font-medium'}`}>
+                <Text className={`text-label ${active ? 'font-semibold text-ink' : 'font-medium text-mute'}`}>
                   {m === 'login' ? '로그인' : '회원가입'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
 
-        {mode === 'register' && (
-          <>
+        <View className="gap-4">
+          {mode === 'register' && (
             <Controller
               control={control}
               name="nickname"
               render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
-                  className={INPUT_CLASS}
+                <TextField
+                  label="닉네임"
                   placeholder={`닉네임 (최대 ${NICKNAME_MAX}자)`}
-                  placeholderTextColor={PLACEHOLDER}
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   maxLength={NICKNAME_MAX}
+                  error={errors.nickname?.message}
                 />
               )}
             />
-            <AuthFieldError message={errors.nickname?.message} />
-          </>
-        )}
-
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
-              className={INPUT_CLASS}
-              placeholder="이메일"
-              placeholderTextColor={PLACEHOLDER}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
           )}
-        />
-        <AuthFieldError message={errors.email?.message} />
 
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
-              className={INPUT_CLASS}
-              placeholder={`비밀번호 (${PASSWORD_MIN}자 이상)`}
-              placeholderTextColor={PLACEHOLDER}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              secureTextEntry
-            />
-          )}
-        />
-        <AuthFieldError message={errors.password?.message} />
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField
+                label="이메일"
+                placeholder="이메일"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email?.message}
+              />
+            )}
+          />
 
-        <TouchableOpacity
-          className="w-full bg-accent rounded-[14px] py-4 items-center mt-2"
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField
+                label="비밀번호"
+                placeholder={`비밀번호 (${PASSWORD_MIN}자 이상)`}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                secureTextEntry
+                error={errors.password?.message}
+              />
+            )}
+          />
+        </View>
+
+        <Button
+          label={mode === 'login' ? '로그인' : '회원가입'}
           onPress={onSubmit}
+          loading={loading}
           disabled={busy}
-        >
-          {loading
-            ? <ActivityIndicator color={colors.white} />
-            : <Text className="text-white text-[16px] font-bold">{mode === 'login' ? '로그인' : '회원가입'}</Text>}
-        </TouchableOpacity>
+          className="mt-6"
+        />
 
-        <TouchableOpacity onPress={() => switchMode(mode === 'login' ? 'register' : 'login')} className="mt-4">
-          <Text className="text-white/50 text-[13px] underline">
-            {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+        <Pressable
+          onPress={() => switchMode(mode === 'login' ? 'register' : 'login')}
+          className="mt-4 items-center py-2"
+          accessibilityRole="button"
+        >
+          <Text className="text-label text-sub">
+            {mode === 'login' ? '계정이 없으신가요? ' : '이미 계정이 있으신가요? '}
+            <Text className="font-semibold text-primary">{mode === 'login' ? '회원가입' : '로그인'}</Text>
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

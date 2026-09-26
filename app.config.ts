@@ -9,7 +9,7 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   platforms: ['ios', 'android', 'web'],
   icon: './assets/icon.png',
-  userInterfaceStyle: 'dark',
+  userInterfaceStyle: 'light',
   android: {
     package: 'com.chani.fishingapp',
     adaptiveIcon: {
@@ -62,7 +62,7 @@ const config: ExpoConfig = {
       {
         image: './assets/splash-icon.png',
         resizeMode: 'contain',
-        backgroundColor: '#0a2a3a',
+        backgroundColor: '#FFFFFF',
         imageWidth: 200,
       },
     ],

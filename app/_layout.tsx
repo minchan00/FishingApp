@@ -29,7 +29,7 @@ function RootNavigator() {
   if (loading) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.oceanDeep } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
@@ -52,7 +52,7 @@ function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <RootNavigator />
         </SessionProvider>
       </QueryClientProvider>

@@ -1,23 +1,82 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { AppModal } from '@/components/ui/Sheet';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import ObsPickerModal from '@/components/home/ObsPickerModal';
+import { Card } from '@/components/ui/Card';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
+import { AppModal } from '@/components/ui/Sheet';
 import WeatherDetailModal from '@/components/WeatherDetailModal';
 import {
-  DEFAULT_OBS, getConditionEmoji, getCurrentTideSlice, getFishingScore,
-  getScoreGrade, kstHourNow, kstYmd, locateNearestObs, tideHour, tideTime, type ObsStation,
+  DEFAULT_OBS, getConditionIcon, getCurrentTideSlice, getFishingScore,
+  getScoreGrade, kstHourNow, kstYmd, locateNearestObs, tideHour, tideTime, type ObsStation, type TideItem,
 } from '@/data/weather';
 import { useProfile } from '@/hooks/queries';
 import { useCurrentWeather, useTide, useTideForecastWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
 
-const QUICK_ACTIONS: { icon: string; title: string; sub: string; href: Href }[] = [
-  { icon: '🗺️', title: '낚시 포인트', sub: '내 주변 명소', href: '/map' },
-  { icon: '📔', title: '낚시 일지', sub: '기록 & 추억', href: '/log' },
-  { icon: '🐟', title: '어종 도감', sub: '어종 & 공략법', href: '/fish' },
-  { icon: '👥', title: '커뮤니티', sub: '낚시인 모임', href: '/community' },
+const QUICK_ACTIONS: { icon: IconName; title: string; sub: string; href: Href }[] = [
+  { icon: 'map-pin', title: '낚시 포인트', sub: '내 주변 명소', href: '/map' },
+  { icon: 'book-open', title: '낚시 일지', sub: '기록 & 추억', href: '/log' },
+  { icon: 'fish', title: '어종 도감', sub: '어종 & 공략법', href: '/fish' },
+  { icon: 'users', title: '커뮤니티', sub: '낚시인 모임', href: '/community' },
 ];
+
+/** 실측값이 있으면 실측, 없으면 예측 조위(cm) */
+const tideLevel = (item: TideItem): number | null => {
+  const raw = item.bscTdlvHgt ?? item.tdlvHgt;
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** 오늘의 조위: 시간별 높이를 작은 막대로 */
+function TideStrip({ items, nowHour }: { items: TideItem[]; nowHour: number }) {
+  const levels = items.map(tideLevel);
+  const known = levels.filter((n): n is number => n !== null);
+  const min = known.length > 0 ? Math.min(...known) : 0;
+  const max = known.length > 0 ? Math.max(...known) : 0;
+  const range = max - min || 1;
+
+  return (
+    <View className="flex-row items-end justify-between">
+      {items.map((item, i) => {
+        const level = levels[i] ?? null;
+        const isCurrent = tideHour(item) === nowHour;
+        // 가장 낮은 값도 막대가 보이도록 최소 높이를 둔다
+        const barHeight = level === null ? 4 : 8 + ((level - min) / range) * 32;
+        return (
+          <View key={`${item.obsrvnDt ?? i}`} className="flex-1 items-center">
+            <Text className={`mb-1 text-caption ${isCurrent ? 'font-semibold text-primary' : 'text-sub'}`}>
+              {level === null ? '-' : Math.round(level)}
+            </Text>
+            <View className="h-10 justify-end">
+              <View
+                className={`w-2.5 rounded-full ${isCurrent ? 'bg-primary' : 'bg-surface-strong'}`}
+                style={{ height: barHeight }}
+              />
+            </View>
+            <Text className={`mt-1 text-caption ${isCurrent ? 'font-semibold text-primary' : 'text-mute'}`}>{tideTime(item)}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SmallAction({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={(e) => { e.stopPropagation(); onPress(); }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className="h-8 flex-row items-center gap-1 rounded-full bg-bg px-2.5 active:bg-surface-strong"
+    >
+      <Icon name={icon} size={14} color={colors.sub} />
+      <Text className="text-caption font-medium text-sub">{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function HomeScreen() {
   const profile = useProfile();
@@ -64,20 +123,21 @@ export default function HomeScreen() {
   const renderWeatherCard = () => {
     if (locating || weather.isPending || tide.isPending || tideForecast.isPending) {
       return (
-        <View className="m-4 bg-ocean-surface rounded-2xl p-[30px] border border-card-border items-center">
-          <ActivityIndicator color={colors.accent} size="large" />
-          <Text className="text-muted mt-2.5 text-[13px]">날씨 & 조위 불러오는 중...</Text>
-        </View>
+        <Card className="items-center py-10">
+          <ActivityIndicator color={colors.primary} />
+          <Text className="mt-3 text-label text-mute">날씨 & 조위 불러오는 중...</Text>
+        </Card>
       );
     }
     if (!weather.data) {
       return (
-        <View className="m-4 bg-ocean-surface rounded-2xl p-[30px] border border-card-border items-center">
-          <Text className="text-muted text-[13px]">날씨 정보를 불러올 수 없어요</Text>
-          <TouchableOpacity onPress={refetchAll} className="mt-2.5">
-            <Text className="text-accent text-[13px]">다시 시도</Text>
-          </TouchableOpacity>
-        </View>
+        <Card className="items-center py-10">
+          <Icon name="cloud-off" size={24} color={colors.mute} />
+          <Text className="mt-2 text-label text-mute">날씨 정보를 불러올 수 없어요</Text>
+          <Pressable onPress={refetchAll} className="mt-2 px-3 py-1.5" accessibilityRole="button">
+            <Text className="text-label font-semibold text-primary">다시 시도</Text>
+          </Pressable>
+        </Card>
       );
     }
 
@@ -99,142 +159,117 @@ export default function HomeScreen() {
     const nowHour = kstHourNow();
 
     return (
-      <TouchableOpacity
-        className="m-4 bg-ocean-surface rounded-2xl p-4 border border-card-border"
-        onPress={() => setDetailModal(true)}
-        activeOpacity={0.9}
-      >
+      <Card onPress={() => setDetailModal(true)}>
         {/* 위치 & 버튼 */}
-        <View className="flex-row justify-between items-center mb-2.5">
-          <Text className="text-muted text-[12px] font-medium">📍 {obs.name}</Text>
-          <View className="flex-row">
-            <TouchableOpacity onPress={(e) => { e.stopPropagation(); autoSelectObs(); }} className="bg-white/10 rounded-lg px-2 py-1">
-              <Text className="text-white text-[11px]">📍 내 위치</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={(e) => { e.stopPropagation(); setObsModal(true); }} className="bg-white/10 rounded-lg px-2 py-1 ml-1.5">
-              <Text className="text-white text-[11px]">🔍 검색</Text>
-            </TouchableOpacity>
+        <View className="mb-3 flex-row items-center justify-between">
+          <View className="flex-1 flex-row items-center gap-1">
+            <Icon name="map-pin" size={14} color={colors.mute} />
+            <Text className="text-label font-medium text-sub" numberOfLines={1}>{obs.name}</Text>
+          </View>
+          <View className="flex-row gap-1.5">
+            <SmallAction icon="navigation" label="내 위치" onPress={autoSelectObs} />
+            <SmallAction icon="search" label="검색" onPress={() => setObsModal(true)} />
           </View>
         </View>
 
-        <View className="flex-row justify-between items-start mb-3">
-          <View>
-            <View className="flex-row items-end">
-              <Text className="text-white text-[36px] font-semibold">{temp}°C</Text>
-              <Text className="text-[32px] ml-2 mb-1">{getConditionEmoji(w.weather[0]?.main)}</Text>
-            </View>
-            <Text className="text-muted text-[12px] mt-0.5">{w.weather[0]?.description} · 바람 {windSpeed}m/s</Text>
-          </View>
-          <View className="items-end">
-            {/* 등급 색은 점수에 따라 달라지므로 style로 준다 */}
-            <View
-              className="border rounded-[10px] px-2.5 py-1.5 mb-1.5 items-center"
-              style={{ borderColor: grade.color, backgroundColor: `${grade.color}22` }}
-            >
-              <Text className="text-[12px] font-bold" style={{ color: grade.color }}>{grade.grade}급 · {score}점</Text>
-              <Text className="text-[10px] mt-0.5" style={{ color: grade.color }}>{grade.label}</Text>
-            </View>
-            <Text className="text-muted text-[11px] mt-0.5">습도 {w.main.humidity}% · 체감 {feelsLike}°C</Text>
+        {/* 기온 & 날씨 */}
+        <View className="flex-row items-center">
+          <Icon name={getConditionIcon(w.weather[0]?.main)} size={40} color={colors.ink} />
+          <Text className="ml-3 text-[40px] font-bold leading-[48px] text-ink">{temp}°</Text>
+          <View className="ml-3 flex-1">
+            <Text className="text-body text-ink">{w.weather[0]?.description}</Text>
+            <Text className="mt-0.5 text-caption text-mute">
+              체감 {feelsLike}° · 최저 {tempMin}° / 최고 {tempMax}°
+            </Text>
           </View>
         </View>
 
-        <View className="flex-row border-t border-card-border pt-3 mb-3">
+        <View className="mt-3 flex-row gap-4">
           {[
-            { label: '최저', value: `${tempMin}°C` },
-            { label: '최고', value: `${tempMax}°C` },
-            { label: '풍속', value: `${windSpeed}m/s` },
-            { label: '구름', value: `${w.clouds.all}%` },
-          ].map((item, i) => (
-            <View key={item.label} className={`flex-1 items-center ${i > 0 ? 'border-l border-card-border' : ''}`}>
-              <Text className="text-muted text-[10px]">{item.label}</Text>
-              <Text className="text-white text-[13px] font-medium mt-0.5">{item.value}</Text>
+            { icon: 'wind' as const, value: `${windSpeed}m/s` },
+            { icon: 'droplet' as const, value: `${w.main.humidity}%` },
+            { icon: 'cloud' as const, value: `${w.clouds.all}%` },
+          ].map((item) => (
+            <View key={item.icon} className="flex-row items-center gap-1">
+              <Icon name={item.icon} size={14} color={colors.mute} />
+              <Text className="text-label text-sub">{item.value}</Text>
             </View>
           ))}
         </View>
 
-        <View className="border-t border-card-border pt-3">
-          <Text className="text-white text-[12px] font-semibold">🌊 오늘의 조위</Text>
-          {tideSlice.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
-              {tideSlice.map((item, i) => {
-                const isCurrent = tideHour(item) === nowHour;
-                return (
-                  <View
-                    key={i}
-                    className={`items-center mr-4 px-2 py-1.5 rounded-lg ${isCurrent ? 'bg-accent/15 border border-accent' : ''}`}
-                  >
-                    <Text className={`text-[11px] mb-1 ${isCurrent ? 'text-accent' : 'text-muted'}`}>{tideTime(item)}</Text>
-                    <Text className="text-white text-[14px] font-semibold">{item.bscTdlvHgt ? `${item.bscTdlvHgt}cm` : '-'}</Text>
-                    <Text className="text-ocean-light text-[10px] mt-0.5">예측 {item.tdlvHgt ? `${Math.round(Number(item.tdlvHgt))}` : '-'}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          ) : tideEvents.length === 0 ? (
-            <Text className="text-white/40 text-[12px] text-center py-2.5">조위 데이터가 없어요</Text>
-          ) : null}
-
-          {/* 만조/간조 시간 */}
-          {tideEvents.length > 0 && (
-            <View className="flex-row flex-wrap mt-3 pt-2.5 border-t border-white/[0.08]">
-              {tideEvents.map((e, i) => (
-                <View key={i} className="items-center mr-5 mb-1">
-                  <Text className={`text-[11px] font-semibold ${e.type === '만조' ? 'text-ocean-light' : 'text-muted'}`}>
-                    {e.type === '만조' ? '🔵' : '⚪'} {e.type}
-                  </Text>
-                  <Text className="text-white text-[12px] font-semibold mt-0.5">{e.time}</Text>
-                  <Text className="text-white/50 text-[10px]">{e.height}cm</Text>
-                </View>
-              ))}
+        {/* 낚시 점수 — 등급 색은 점수에 따라 달라지므로 style로 준다 */}
+        <View className="mt-4 rounded-field bg-bg p-3.5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-baseline gap-1">
+              <Text className="text-label text-sub">낚시 지수</Text>
+              <Text className="ml-1 text-title text-ink">{score}</Text>
+              <Text className="text-caption text-mute">/ 100</Text>
             </View>
+            <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: grade.soft }}>
+              <Text className="text-caption font-semibold" style={{ color: grade.color }}>
+                {grade.grade}등급 · {grade.label}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-strong">
+            <View className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, score))}%`, backgroundColor: grade.color }} />
+          </View>
+        </View>
+
+        {/* 만조/간조 시간 */}
+        {tideEvents.length > 0 && (
+          <View className="mt-4 flex-row flex-wrap gap-x-4 gap-y-1.5">
+            {tideEvents.map((e) => (
+              <View key={`${e.type}-${e.at}`} className="flex-row items-center gap-1.5">
+                <Icon name={e.type === '만조' ? 'arrow-up' : 'arrow-down'} size={13} color={e.type === '만조' ? colors.primary : colors.mute} />
+                <Text className="text-caption text-sub">{e.type}</Text>
+                <Text className="text-label font-semibold text-ink">{e.time}</Text>
+                <Text className="text-caption text-mute">{e.height}cm</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 오늘의 조위 */}
+        <View className="mt-4 border-t border-line pt-3.5">
+          <Text className="mb-2.5 text-label font-semibold text-ink">오늘의 조위 (cm)</Text>
+          {tideSlice.length > 0 ? (
+            <TideStrip items={tideSlice} nowHour={nowHour} />
+          ) : (
+            <Text className="py-2 text-center text-caption text-mute">조위 데이터가 없어요</Text>
           )}
         </View>
 
-        <View className="items-center mt-2.5">
-          <Text className="text-ocean-light text-[12px]">📅 일자별 상세 예보 보기 →</Text>
+        <View className="mt-3.5 flex-row items-center justify-center gap-1">
+          <Text className="text-label font-medium text-primary">일자별 상세 예보 보기</Text>
+          <Icon name="chevron-right" size={16} color={colors.primary} />
         </View>
-      </TouchableOpacity>
+      </Card>
     );
   };
 
   return (
-    <View className="flex-1 bg-ocean-deep">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="flex-row justify-between items-center px-5 pt-14 pb-2">
-          <View>
-            <Text className="text-muted text-[12px] tracking-[1px]">오늘의 낚시</Text>
-            <Text className="text-white text-[22px] font-semibold mt-0.5">안녕하세요, {userNickname}님 👋</Text>
-          </View>
-          <TouchableOpacity
-            className="w-11 h-11 rounded-[22px] bg-card border border-card-border items-center justify-center"
-            onPress={() => router.push('/settings')}
-            accessibilityLabel="설정"
-          >
-            <Text className="text-white text-[20px]">☰</Text>
-          </TouchableOpacity>
-        </View>
-
+    <View className="flex-1 bg-bg">
+      <ScreenHeader
+        eyebrow="오늘의 낚시"
+        title={`안녕하세요, ${userNickname}님`}
+        right={<IconButton icon="menu" label="설정" onPress={() => router.push('/settings')} />}
+      />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pb-8 pt-2">
         {renderWeatherCard()}
 
-        <View className="px-4 mt-2">
-          <Text className="text-muted text-[11px] tracking-[1px] mb-2.5">빠른 시작</Text>
-          <View className="flex-row flex-wrap justify-between">
-            {QUICK_ACTIONS.map((a) => (
-              <TouchableOpacity
-                key={a.title}
-                className="w-[48%] bg-card border border-card-border rounded-[14px] p-3.5 mb-2.5"
-                onPress={() => router.push(a.href)}
-                activeOpacity={0.7}
-              >
-                <Text className="text-[28px] mb-2">{a.icon}</Text>
-                <Text className="text-white text-[13px] font-medium">{a.title}</Text>
-                <Text className="text-muted text-[11px] mt-0.5">{a.sub}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <Text className="mb-2.5 mt-6 text-label font-medium text-mute">빠른 시작</Text>
+        <View className="flex-row flex-wrap justify-between gap-y-3">
+          {QUICK_ACTIONS.map((a) => (
+            <Card key={a.title} onPress={() => router.push(a.href)} className="w-[48.5%]">
+              <View className="mb-3 h-10 w-10 items-center justify-center rounded-full bg-bg">
+                <Icon name={a.icon} size={20} color={colors.primary} />
+              </View>
+              <Text className="text-body font-semibold text-ink">{a.title}</Text>
+              <Text className="mt-0.5 text-caption text-mute">{a.sub}</Text>
+            </Card>
+          ))}
         </View>
-
-        <View className="h-[30px]" />
       </ScrollView>
 
       {/* 일자별 상세 예보 모달 */}

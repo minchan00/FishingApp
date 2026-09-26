@@ -15,12 +15,14 @@ export function markerKind({ isFavorite, isMine, hot, isDefault }: MarkerFlags):
 
 type MarkerAppearance = { symbol: MarkerSymbol; subCaption: string; zIndex: number };
 
+// 네이버 기본 마커 심볼 중에서 고른다 (라이브러리 MarkerSymbol 타입).
+// 강조색(파랑)은 내 포인트, 나머지는 의미가 바로 읽히는 색으로.
 export const MARKER_APPEARANCE: Record<MarkerKind, MarkerAppearance> = {
-  favorite: { symbol: 'yellow', subCaption: '⭐ 즐겨찾기', zIndex: 4 },
-  mine: { symbol: 'blue', subCaption: '🎣 내 포인트', zIndex: 3 },
-  hot: { symbol: 'red', subCaption: '🔥 핫', zIndex: 2 },
+  favorite: { symbol: 'yellow', subCaption: '즐겨찾기', zIndex: 4 },
+  mine: { symbol: 'blue', subCaption: '내 포인트', zIndex: 3 },
+  hot: { symbol: 'red', subCaption: '핫', zIndex: 2 },
   default: { symbol: 'green', subCaption: '', zIndex: 1 },
-  shared: { symbol: 'lightblue', subCaption: '공유', zIndex: 0 },
+  shared: { symbol: 'gray', subCaption: '공유', zIndex: 0 },
 };
 
 /** 네이버 지도 줌 레벨 (react-native-maps의 latitudeDelta 대략 환산) */

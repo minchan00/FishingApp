@@ -2,6 +2,7 @@
 // metro.config.js가 web 번들에서 '@mj-studio/react-native-naver-map' 대신 이 파일을 쓴다.
 import { forwardRef, useImperativeHandle, type PropsWithChildren } from 'react';
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { colors } from '@/theme/colors';
 
 type MapViewProps = PropsWithChildren<{ style?: StyleProp<ViewStyle> }>;
 
@@ -16,8 +17,8 @@ export const NaverMapView = forwardRef<unknown, MapViewProps>(function NaverMapV
     setLocationTrackingMode: noop,
   }));
   return (
-    <View style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: '#0e4060' }, style]}>
-      <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>🗺️ 지도는 폰 앱에서만 보여요</Text>
+    <View style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }, style]}>
+      <Text style={{ color: colors.mute, fontSize: 13 }}>지도는 폰 앱에서만 보여요</Text>
     </View>
   );
 });

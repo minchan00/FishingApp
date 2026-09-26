@@ -1,19 +1,37 @@
 /** @type {import('tailwindcss').Config} */
-// 색상은 src/theme/colors.ts와 같은 값을 쓴다
+// 디자인 기준 (밝은 화이트 테마). 값은 src/theme/colors.ts와 같게 유지한다.
+// NativeWind는 1rem을 14px로 계산하므로 글자·모서리는 px로 고정한다.
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
-  // 앱은 항상 다크 테마(app.config userInterfaceStyle: 'dark'). 웹에서 시스템 설정을 따르지 않게 class 방식으로 둔다
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        ocean: { deep: '#0a2a3a', mid: '#0e4060', surface: '#1a6a8a', light: '#2a9fc4' },
-        foam: '#e8f7fc',
-        sand: '#f5e9c8',
-        accent: { DEFAULT: '#f4a826', 2: '#e05c1a' },
-        muted: 'rgba(255,255,255,0.65)',
-        card: { DEFAULT: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.12)' },
+        bg: '#FFFFFF',
+        surface: { DEFAULT: '#F4F6F8', strong: '#EAEEF2' },
+        line: '#E5E8EB',
+        ink: '#191F28',
+        sub: '#4E5968',
+        mute: '#8B95A1',
+        primary: { DEFAULT: '#0A7BB5', pressed: '#086696', soft: '#E7F3FA' },
+        danger: { DEFAULT: '#E5484D', soft: '#FDECEC' },
+        success: { DEFAULT: '#12A150', soft: '#E7F6EE' },
+        warning: { DEFAULT: '#D9820B', soft: '#FFF4E3' },
+        kakao: '#FEE500',
+      },
+      fontSize: {
+        display: ['28px', { lineHeight: '36px', fontWeight: '700' }],
+        title: ['22px', { lineHeight: '30px', fontWeight: '700' }],
+        heading: ['18px', { lineHeight: '26px', fontWeight: '600' }],
+        body: ['15px', { lineHeight: '22px' }],
+        label: ['13px', { lineHeight: '18px' }],
+        caption: ['12px', { lineHeight: '16px' }],
+      },
+      borderRadius: {
+        card: '16px',
+        field: '12px',
+        sheet: '24px',
       },
     },
   },

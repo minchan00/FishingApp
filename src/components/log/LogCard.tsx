@@ -1,11 +1,29 @@
 import { memo } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import type { FishingLog } from '@/types/models';
+import { Icon } from '@/components/ui/Icon';
+import { colors } from '@/theme/colors';
+import type { Catch, FishingLog } from '@/types/models';
 import { formatKoreanDate } from './format';
 
-const ratingLabel = (rating: FishingLog['rating']) =>
-  rating === '대박' ? '🏆 대박' : rating === '보통' ? '😊 보통' : '😔 꽝';
+const RATING_BADGE: Record<FishingLog['rating'], { box: string; text: string }> = {
+  대박: { box: 'bg-primary-soft', text: 'text-primary' },
+  보통: { box: 'bg-surface', text: 'text-sub' },
+  꽝: { box: 'bg-surface', text: 'text-mute' },
+};
+
+/** 등급 배지 (대박/보통/꽝) */
+export function RatingBadge({ rating }: { rating: FishingLog['rating'] }) {
+  const style = RATING_BADGE[rating];
+  return (
+    <View className={`rounded-full px-2 py-0.5 ${style.box}`}>
+      <Text className={`text-caption font-semibold ${style.text}`}>{rating}</Text>
+    </View>
+  );
+}
+
+/** '광어 45cm ×2' */
+export const catchLabel = (c: Catch) => `${c.species}${c.sizeCm !== null ? ` ${c.sizeCm}cm` : ''}${c.count > 1 ? ` ×${c.count}` : ''}`;
 
 type Props = {
   log: FishingLog;
@@ -14,49 +32,57 @@ type Props = {
 
 /** 일지 목록 한 줄 */
 export const LogCard = memo(function LogCard({ log, onPress }: Props) {
+  const totalCount = log.catches.reduce((s, c) => s + c.count, 0);
   return (
-    <TouchableOpacity
-      className="mb-2.5 overflow-hidden rounded-[14px] border border-card-border bg-card"
-      onPress={() => onPress(log.id)}
-      activeOpacity={0.8}
-    >
-      <View className="flex-row items-center justify-between bg-ocean-surface/40 px-3.5 py-2.5">
-        <Text className="text-[13px] font-medium text-white">
-          {formatKoreanDate(log.fishedOn)} · {log.location}
-        </Text>
-        <Text className="text-[12px] text-accent">{ratingLabel(log.rating)}</Text>
-      </View>
-      <View className="p-3.5">
-        <View className="mb-2 flex-row">
-          <Text className="text-[12px] text-muted">{log.weather}</Text>
-          {log.duration ? <Text className="ml-3 text-[12px] text-muted">⏰ {log.duration}시간</Text> : null}
-          <Text className="ml-3 text-[12px] text-muted">🎣 {log.catches.reduce((s, c) => s + c.count, 0)}마리</Text>
+    <Pressable className="flex-row gap-3 border-b border-line px-5 py-4 active:bg-surface" onPress={() => onPress(log.id)}>
+      <View className="flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-caption text-mute">{formatKoreanDate(log.fishedOn)}</Text>
+          <RatingBadge rating={log.rating} />
         </View>
+        <Text className="mt-1 text-heading text-ink" numberOfLines={1}>
+          {log.location}
+        </Text>
+
+        <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          <Text className="text-label text-sub">{log.weather}</Text>
+          {log.duration ? (
+            <View className="flex-row items-center gap-1">
+              <Icon name="clock" size={13} color={colors.mute} />
+              <Text className="text-label text-sub">{log.duration}시간</Text>
+            </View>
+          ) : null}
+          <View className="flex-row items-center gap-1">
+            <Icon name="fish" size={13} color={colors.mute} />
+            <Text className="text-label text-sub">{totalCount}마리</Text>
+          </View>
+        </View>
+
         {log.catches.length > 0 && (
-          <View className="flex-row flex-wrap">
+          <View className="mt-2 flex-row flex-wrap gap-1.5">
             {log.catches.map((c, i) => (
-              <View key={i} className="mb-1 mr-1.5 rounded-md border border-ocean-light bg-ocean-light/20 px-2 py-[3px]">
-                <Text className="text-[11px] text-ocean-light">
-                  {c.species} {c.sizeCm !== null ? `${c.sizeCm}cm` : ''} {c.count > 1 ? `x${c.count}` : ''}
-                </Text>
+              <View key={i} className="rounded-md bg-surface px-2 py-1">
+                <Text className="text-caption text-sub">{catchLabel(c)}</Text>
               </View>
             ))}
           </View>
         )}
+
         {log.memo ? (
-          <Text className="mt-2 text-[12px] leading-[18px] text-muted" numberOfLines={2}>
+          <Text className="mt-2 text-label text-mute" numberOfLines={2}>
             {log.memo}
           </Text>
         ) : null}
-        {log.imageUrl ? (
-          <Image
-            source={{ uri: log.imageUrl }}
-            style={{ width: '100%', height: 160, borderRadius: 10, marginTop: 8 }}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : null}
       </View>
-    </TouchableOpacity>
+
+      {log.imageUrl ? (
+        <Image
+          source={{ uri: log.imageUrl }}
+          style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: colors.surface }}
+          contentFit="cover"
+          transition={200}
+        />
+      ) : null}
+    </Pressable>
   );
 });

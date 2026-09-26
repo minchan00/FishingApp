@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity } from 'react-native';
-import AuthFieldError from '@/components/ui/AuthFieldError';
+import { Alert, Text } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { BottomSheet } from '@/components/ui/Sheet';
+import { TextField } from '@/components/ui/TextField';
 import { useUpdateNickname } from '@/hooks/queries';
 import { NICKNAME_MAX, nicknameSchema, type NicknameFormInput, type NicknameFormValues } from '@/schemas/profile';
-import { colors } from '@/theme/colors';
-import HomeSheet, { SHEET_INPUT_CLASS, SHEET_PLACEHOLDER } from './HomeSheet';
 
 type Props = {
   visible: boolean;
@@ -35,34 +35,24 @@ export default function NicknameEditModal({ visible, currentNickname, onClose }:
   });
 
   return (
-    <HomeSheet visible={visible} title="✏️ 정보 수정" onClose={onClose}>
-      <Text className="text-muted text-[12px] mb-3">변경할 닉네임을 입력해주세요</Text>
+    <BottomSheet visible={visible} title="정보 수정" onClose={onClose}>
+      <Text className="mb-3 text-label text-sub">변경할 닉네임을 입력해주세요</Text>
       <Controller
         control={control}
         name="nickname"
         render={({ field: { value, onChange, onBlur } }) => (
-          <TextInput
-            className={`${SHEET_INPUT_CLASS} mb-3`}
+          <TextField
             placeholder={`닉네임 (최대 ${NICKNAME_MAX}자)`}
-            placeholderTextColor={SHEET_PLACEHOLDER}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
             maxLength={NICKNAME_MAX}
             autoFocus
+            error={errors.nickname?.message}
           />
         )}
       />
-      <AuthFieldError message={errors.nickname?.message} />
-      <TouchableOpacity
-        className="bg-accent rounded-xl py-3.5 items-center mt-1"
-        onPress={onSubmit}
-        disabled={updateNickname.isPending}
-      >
-        {updateNickname.isPending
-          ? <ActivityIndicator color={colors.white} />
-          : <Text className="text-white text-[15px] font-semibold">저장</Text>}
-      </TouchableOpacity>
-    </HomeSheet>
+      <Button label="저장" onPress={onSubmit} loading={updateNickname.isPending} className="mt-5" />
+    </BottomSheet>
   );
 }

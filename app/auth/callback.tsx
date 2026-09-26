@@ -13,8 +13,8 @@ export default function AuthCallbackScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-ocean-deep items-center justify-center">
-        <ActivityIndicator color={colors.white} />
+      <View className="flex-1 items-center justify-center bg-bg">
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }

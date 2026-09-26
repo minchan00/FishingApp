@@ -2,11 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { BottomSheet } from '@/components/ui/Sheet';
+import { TextField } from '@/components/ui/TextField';
 import { useSaveLog } from '@/hooks/queries';
 import { registerCatchSchema, type RegisterCatchFormInput, type RegisterCatchFormOutput } from '@/schemas/fish';
-import { colors } from '@/theme/colors';
-import { CloseX, cls, FieldError, inputClass, PLACEHOLDER_COLOR, SheetModal } from './ui';
 
 export type RegisterDraft = RegisterCatchFormInput;
 
@@ -55,7 +56,7 @@ export function RegisterCatchModal({ draft, imageUri, onClose, onRegistered }: P
       {
         onSuccess: () => {
           onRegistered();
-          Alert.alert('✅ 등록 완료!', `${species}이(가)\n내 도감 + 낚시 일지에 자동 등록됐어요!`);
+          Alert.alert('등록 완료!', `${species}이(가)\n내 도감 + 낚시 일지에 자동 등록됐어요!`);
         },
         onError: () => Alert.alert('오류', '등록 중 오류가 발생했어요.'),
       },
@@ -63,72 +64,48 @@ export function RegisterCatchModal({ draft, imageUri, onClose, onRegistered }: P
   });
 
   return (
-    <SheetModal visible={draft !== null} onClose={onClose}>
-      <View className={cls.modalHeader}>
-        <Text className={cls.modalTitle}>🐟 도감 + 일지 등록</Text>
-        <CloseX onPress={onClose} />
-      </View>
-      {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          style={{ width: '100%', height: 130, borderRadius: 12, marginBottom: 14 }}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : null}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Text className={cls.inputLabel}>🐟 어종명 *</Text>
-        <Controller
-          control={control}
-          name="name"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput className={inputClass(!!errors.name)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="어종명" placeholderTextColor={PLACEHOLDER_COLOR} />
-          )}
-        />
-        <FieldError message={errors.name?.message} />
-
-        <Text className={cls.inputLabel}>📏 크기 (cm)</Text>
-        <Controller
-          control={control}
-          name="size"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput className={inputClass(!!errors.size)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="크기 입력 (선택)" placeholderTextColor={PLACEHOLDER_COLOR} keyboardType="numeric" />
-          )}
-        />
-        <FieldError message={errors.size?.message} />
-
-        <Text className={cls.inputLabel}>📍 잡은 장소</Text>
-        <Controller
-          control={control}
-          name="location"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput className={inputClass(!!errors.location)} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="장소 입력 (선택)" placeholderTextColor={PLACEHOLDER_COLOR} />
-          )}
-        />
-        <FieldError message={errors.location?.message} />
-
-        <Text className={cls.inputLabel}>📝 메모</Text>
-        <Controller
-          control={control}
-          name="memo"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
-              className={`${inputClass(!!errors.memo)} h-[70px]`}
-              style={{ textAlignVertical: 'top' }}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="메모 (선택)"
-              placeholderTextColor={PLACEHOLDER_COLOR}
-              multiline
-            />
-          )}
-        />
-        <FieldError message={errors.memo?.message} />
+    <BottomSheet visible={draft !== null} onClose={onClose} title="도감 + 일지 등록">
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: '100%', height: 140, borderRadius: 12, marginBottom: 16 }}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : null}
+        <View className="gap-4">
+          <Controller
+            control={control}
+            name="name"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField label="어종명 *" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="어종명" error={errors.name?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="size"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField label="크기 (cm)" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="크기 입력 (선택)" keyboardType="numeric" error={errors.size?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="location"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField label="잡은 장소" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="장소 입력 (선택)" error={errors.location?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="memo"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <TextField label="메모" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="메모 (선택)" multiline error={errors.memo?.message} />
+            )}
+          />
+        </View>
       </ScrollView>
-      <TouchableOpacity className={`${cls.registerBtn} mt-[12px]`} onPress={register} disabled={saveLog.isPending}>
-        {saveLog.isPending ? <ActivityIndicator color={colors.white} /> : <Text className={cls.btnText}>✅ 도감 + 일지에 등록하기</Text>}
-      </TouchableOpacity>
-    </SheetModal>
+      <Button label="도감 + 일지에 등록하기" onPress={register} loading={saveLog.isPending} className="mt-4" />
+    </BottomSheet>
   );
 }

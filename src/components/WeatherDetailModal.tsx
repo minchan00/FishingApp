@@ -1,10 +1,16 @@
 import { FlashList } from '@shopify/flash-list';
 import { format, getDay, parseISO } from 'date-fns';
-import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { AppModal, SheetPanel } from '@/components/ui/Sheet';
+import { useState, type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ObsSearchField } from '@/components/home/ObsPickerModal';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import { ListRow } from '@/components/ui/ListRow';
+import { BottomSheet } from '@/components/ui/Sheet';
 import {
-  OBS_LIST, forecastTime, getConditionEmoji, isKstToday, kstHourNow, locateNearestObs, tideHour, tideTime, type ObsStation,
+  OBS_LIST, forecastTime, getConditionIcon, isKstToday, kstHourNow, locateNearestObs, tideHour, tideTime, type ObsStation,
 } from '@/data/weather';
 import { useForecast, useTideForecastWeek, useTideWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
@@ -25,9 +31,19 @@ const formatDate = (dateStr: string) => {
 
 const isToday = isKstToday;
 
-const ObsSeparator = () => <View className="h-px bg-white/[0.06]" />;
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View className="mx-5 mb-3">
+      <Card tone="outline">
+        <Text className="text-label font-semibold text-ink">{title}</Text>
+        {children}
+      </Card>
+    </View>
+  );
+}
 
 export default function WeatherDetailModal({ obs, onClose }: Props) {
+  const { top, bottom } = useSafeAreaInsets();
   const [currentObs, setCurrentObs] = useState(obs);
   const [selectedDay, setSelectedDay] = useState(0);
   const [searchModal, setSearchModal] = useState(false);
@@ -41,6 +57,11 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
   const selectObs = (next: ObsStation) => {
     setCurrentObs(next);
     setSelectedDay(0);
+    setSearchModal(false);
+    setSearchQuery('');
+  };
+
+  const closeSearch = () => {
     setSearchModal(false);
     setSearchQuery('');
   };
@@ -59,13 +80,67 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
 
   const filteredObs = OBS_LIST.filter((o) => o.name.includes(searchQuery));
 
+  // 전체 화면 모달이라 ScreenHeader(router.back) 대신 같은 모양의 헤더를 직접 그린다
+  const header = (
+    <View className="flex-row items-center bg-bg px-5 pb-3" style={{ paddingTop: top + 12 }}>
+      <Pressable onPress={onClose} accessibilityLabel="뒤로" className="-ml-2 mr-1 h-10 w-10 items-center justify-center rounded-full active:bg-surface">
+        <Icon name="chevron-left" size={26} color={colors.ink} />
+      </Pressable>
+      <Text className="flex-1 text-heading text-ink">일자별 예보</Text>
+      <Pressable
+        onPress={() => setSearchModal(true)}
+        accessibilityRole="button"
+        accessibilityLabel="지역 선택"
+        className="h-9 flex-row items-center gap-1 rounded-full bg-surface px-3 active:bg-surface-strong"
+      >
+        <Icon name="map-pin" size={14} color={colors.sub} />
+        <Text className="text-label font-medium text-ink">{currentObs.name}</Text>
+        <Icon name="chevron-down" size={14} color={colors.sub} />
+      </Pressable>
+    </View>
+  );
+
+  const searchSheet = (
+    <BottomSheet visible={searchModal} title="지역 선택" onClose={closeSearch}>
+      <Button
+        label={locating ? '위치 찾는 중...' : '현재 위치 사용'}
+        variant="secondary"
+        size="md"
+        icon="navigation"
+        onPress={selectCurrentLocation}
+        loading={locating}
+        className="mb-3"
+      />
+      <ObsSearchField value={searchQuery} onChangeText={setSearchQuery} autoFocus />
+      <FlashList
+        data={filteredObs}
+        keyExtractor={(item) => item.code}
+        extraData={currentObs.code}
+        renderItem={({ item }) => {
+          const active = item.code === currentObs.code;
+          return (
+            <ListRow
+              title={item.name}
+              onPress={() => selectObs(item)}
+              chevron={false}
+              right={active ? <Icon name="check" size={20} color={colors.primary} /> : undefined}
+            />
+          );
+        }}
+        style={{ maxHeight: 360 }}
+      />
+    </BottomSheet>
+  );
+
   if (forecast.isPending || tideWeek.isPending || tideForecast.isPending) {
     return (
-      <View className="flex-1 bg-ocean-deep justify-center items-center">
-        <ActivityIndicator color={colors.accent} size="large" />
-        <Text className="text-muted mt-3 text-[13px]">
-          {currentObs.name} 예보 불러오는 중...
-        </Text>
+      <View className="flex-1 bg-bg">
+        {header}
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text className="mt-3 text-label text-mute">{currentObs.name} 예보 불러오는 중...</Text>
+        </View>
+        {searchSheet}
       </View>
     );
   }
@@ -77,198 +152,142 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
   const nowHour = kstHourNow();
 
   return (
-    <View className="flex-1 bg-ocean-deep">
-      {/* 헤더 */}
-      <View className="px-5 pt-14 pb-3">
-        <TouchableOpacity onPress={onClose} className="mb-2">
-          <Text className="text-white text-[16px]">← 뒤로</Text>
-        </TouchableOpacity>
-        <View className="flex-row justify-between items-center">
-          <Text className="text-white text-[20px] font-semibold">📅 일자별 예보</Text>
-          <TouchableOpacity
-            onPress={() => setSearchModal(true)}
-            className="bg-white/10 px-3 py-1.5 rounded-[20px] border border-white/20"
-          >
-            <Text className="text-accent text-[13px] font-semibold">📍 {currentObs.name} ▾</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View className="flex-1 bg-bg">
+      {header}
 
       {forecast.isError && (
-        <View className="items-center py-[30px]">
-          <Text className="text-muted text-[13px]">예보를 불러올 수 없어요</Text>
-          <TouchableOpacity onPress={() => forecast.refetch()} className="mt-2.5">
-            <Text className="text-accent text-[13px]">다시 시도</Text>
-          </TouchableOpacity>
+        <View className="items-center py-8">
+          <Icon name="cloud-off" size={24} color={colors.mute} />
+          <Text className="mt-2 text-label text-mute">예보를 불러올 수 없어요</Text>
+          <Pressable onPress={() => forecast.refetch()} className="mt-2 px-3 py-1.5" accessibilityRole="button">
+            <Text className="text-label font-semibold text-primary">다시 시도</Text>
+          </Pressable>
         </View>
       )}
 
       {/* 날짜 탭 (며칠치뿐이라 ScrollView로 충분) */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2" contentContainerClassName="px-4">
-        {days.map((day, i) => {
-          const active = selectedDay === i;
-          return (
-            <TouchableOpacity
-              key={day.date}
-              onPress={() => setSelectedDay(i)}
-              className={`items-center px-3.5 py-2.5 mr-2 rounded-[14px] border ${active ? 'border-accent bg-accent/10' : 'bg-card border-card-border'}`}
-            >
-              <Text className="text-[20px] mb-1">{getConditionEmoji(day.condition)}</Text>
-              <Text className={`text-[12px] ${active ? 'text-accent font-semibold' : 'text-muted'}`}>
-                {isToday(day.date) ? '오늘' : formatDate(day.date)}
-              </Text>
-              <Text className={`text-[11px] mt-0.5 ${active ? 'text-white' : 'text-white/50'}`}>
-                {day.tempMin}°/{day.tempMax}°
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-5 pb-3">
+          {days.map((day, i) => {
+            const active = selectedDay === i;
+            return (
+              <Pressable
+                key={day.date}
+                onPress={() => setSelectedDay(i)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                className={`min-w-[68px] items-center rounded-card px-3 py-2.5 ${active ? 'bg-ink' : 'bg-surface active:bg-surface-strong'}`}
+              >
+                <Text className={`text-caption ${active ? 'font-semibold text-white' : 'text-sub'}`}>
+                  {isToday(day.date) ? '오늘' : formatDate(day.date)}
+                </Text>
+                <View className="my-1.5">
+                  <Icon name={getConditionIcon(day.condition)} size={20} color={active ? colors.white : colors.sub} />
+                </View>
+                <Text className={`text-caption ${active ? 'text-white' : 'text-mute'}`}>
+                  {day.tempMin}°/{day.tempMax}°
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottom + 24 }}>
         {selectedForecast && (
           <>
             {/* 선택된 날 날씨 요약 */}
-            <View className="mx-4 mb-3 bg-ocean-surface rounded-2xl p-4 border border-card-border">
-              <View className="flex-row justify-between items-center mb-3">
-                <View>
-                  <Text className="text-white text-[18px] font-semibold">
-                    {isToday(selectedForecast.date) ? '오늘' : formatDate(selectedForecast.date)}
-                  </Text>
-                  <Text className="text-muted text-[13px] mt-0.5">{selectedForecast.conditionDesc}</Text>
-                </View>
-                <Text className="text-[48px]">{getConditionEmoji(selectedForecast.condition)}</Text>
-              </View>
-              <View className="flex-row border-t border-card-border pt-3">
-                {[
-                  { label: '최저', value: `${selectedForecast.tempMin}°C` },
-                  { label: '최고', value: `${selectedForecast.tempMax}°C` },
-                  { label: '바람', value: `${selectedForecast.avgWind}m/s` },
-                  { label: '습도', value: `${selectedForecast.humidity}%` },
-                ].map((item, i) => (
-                  <View key={item.label} className={`flex-1 items-center ${i > 0 ? 'border-l border-card-border' : ''}`}>
-                    <Text className="text-muted text-[10px]">{item.label}</Text>
-                    <Text className="text-white text-[13px] font-medium mt-0.5">{item.value}</Text>
+            <View className="mx-5 mb-3">
+              <Card>
+                <View className="mb-4 flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-heading text-ink">
+                      {isToday(selectedForecast.date) ? '오늘' : formatDate(selectedForecast.date)}
+                    </Text>
+                    <Text className="mt-0.5 text-label text-sub">{selectedForecast.conditionDesc}</Text>
                   </View>
-                ))}
-              </View>
+                  <Icon name={getConditionIcon(selectedForecast.condition)} size={40} color={colors.ink} />
+                </View>
+                <View className="flex-row rounded-field bg-bg py-3">
+                  {[
+                    { label: '최저', value: `${selectedForecast.tempMin}°C` },
+                    { label: '최고', value: `${selectedForecast.tempMax}°C` },
+                    { label: '바람', value: `${selectedForecast.avgWind}m/s` },
+                    { label: '습도', value: `${selectedForecast.humidity}%` },
+                  ].map((item, i) => (
+                    <View key={item.label} className={`flex-1 items-center ${i > 0 ? 'border-l border-line' : ''}`}>
+                      <Text className="text-caption text-mute">{item.label}</Text>
+                      <Text className="mt-0.5 text-label font-semibold text-ink">{item.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Card>
             </View>
 
             {/* 시간별 날씨 */}
-            <View className="mx-4 mb-3 bg-white/5 rounded-2xl p-4 border border-card-border">
-              <Text className="text-white text-[14px] font-semibold">⏰ 시간별 날씨</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2.5">
+            <Section title="시간별 날씨">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
                 {selectedForecast.hourly.map((item, i) => (
-                  <View key={i} className="items-center mr-4 min-w-[50px]">
-                    <Text className="text-muted text-[11px]">{forecastTime(item)}</Text>
-                    <Text className="text-[20px] my-1">{getConditionEmoji(item.weather[0]?.main)}</Text>
-                    <Text className="text-white text-[14px] font-semibold">{Math.round(item.main.temp)}°</Text>
-                    <Text className="text-ocean-light text-[10px] mt-0.5">{Math.round(item.wind.speed)}m/s</Text>
+                  <View key={i} className="mr-4 min-w-[48px] items-center">
+                    <Text className="text-caption text-mute">{forecastTime(item)}</Text>
+                    <View className="my-1.5">
+                      <Icon name={getConditionIcon(item.weather[0]?.main)} size={20} color={colors.sub} />
+                    </View>
+                    <Text className="text-body font-semibold text-ink">{Math.round(item.main.temp)}°</Text>
+                    <Text className="mt-0.5 text-caption text-mute">{Math.round(item.wind.speed)}m/s</Text>
                   </View>
                 ))}
               </ScrollView>
-            </View>
+            </Section>
 
             {/* 조위 데이터 */}
-            <View className="mx-4 mb-3 bg-white/5 rounded-2xl p-4 border border-card-border">
-              <Text className="text-white text-[14px] font-semibold">🌊 시간별 조위</Text>
+            <Section title="시간별 조위 (cm)">
               {selectedTide ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2.5">
-                  {selectedTide.map((item, i) => {
-                    const isCurrent = isToday(selectedForecast.date) && tideHour(item) === nowHour;
-                    return (
-                      <View
-                        key={i}
-                        className={`items-center mr-3 px-2 py-1.5 rounded-lg min-w-[50px] ${isCurrent ? 'bg-accent/15 border border-accent' : ''}`}
-                      >
-                        <Text className={`text-[11px] mb-1 ${isCurrent ? 'text-accent' : 'text-muted'}`}>{tideTime(item)}</Text>
-                        <Text className="text-white text-[14px] font-semibold">{item.bscTdlvHgt ? `${item.bscTdlvHgt}` : '-'}</Text>
-                        <Text className="text-ocean-light text-[12px]">{item.tdlvHgt != null ? Math.round(Number(item.tdlvHgt)) : '-'}</Text>
-                        <Text className="text-white/40 text-[10px]">cm</Text>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
+                <>
+                  <View className="mt-2 flex-row gap-3">
+                    <Text className="text-caption text-mute">위: 실측</Text>
+                    <Text className="text-caption text-mute">아래: 예측</Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                    {selectedTide.map((item, i) => {
+                      const isCurrent = isToday(selectedForecast.date) && tideHour(item) === nowHour;
+                      return (
+                        <View
+                          key={i}
+                          className={`mr-2 min-w-[52px] items-center rounded-field px-2 py-1.5 ${isCurrent ? 'bg-primary-soft' : ''}`}
+                        >
+                          <Text className={`mb-1 text-caption ${isCurrent ? 'font-semibold text-primary' : 'text-mute'}`}>{tideTime(item)}</Text>
+                          <Text className="text-body font-semibold text-ink">{item.bscTdlvHgt ? `${item.bscTdlvHgt}` : '-'}</Text>
+                          <Text className="text-caption text-sub">{item.tdlvHgt != null ? Math.round(Number(item.tdlvHgt)) : '-'}</Text>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </>
               ) : tideEvents.length === 0 ? (
-                <Text className="text-white/40 text-[12px] text-center py-4">
-                  조위 데이터가 없어요
-                </Text>
+                <Text className="py-4 text-center text-caption text-mute">조위 데이터가 없어요</Text>
               ) : null}
               {tideEvents.length > 0 && (
-                <View className="mt-3.5 pt-3 border-t border-white/[0.08]">
-                  <Text className="text-muted text-[11px] mb-2">🌊 만조 / 간조</Text>
-                  <View className="flex-row flex-wrap">
-                    {tideEvents.map((e, i) => (
-                      <View key={i} className="items-center mr-5 mb-1">
-                        <Text className={`text-[11px] font-semibold ${e.type === '만조' ? 'text-ocean-light' : 'text-muted'}`}>
-                          {e.type === '만조' ? '🔵' : '⚪'} {e.type}
-                        </Text>
-                        <Text className="text-white text-[13px] font-semibold mt-0.5">{e.time}</Text>
-                        <Text className="text-white/50 text-[10px]">{e.height}cm</Text>
+                <View className="mt-3 border-t border-line pt-3">
+                  <Text className="mb-2 text-caption text-mute">만조 / 간조</Text>
+                  <View className="flex-row flex-wrap gap-x-4 gap-y-1.5">
+                    {tideEvents.map((e) => (
+                      <View key={`${e.type}-${e.at}`} className="flex-row items-center gap-1.5">
+                        <Icon name={e.type === '만조' ? 'arrow-up' : 'arrow-down'} size={13} color={e.type === '만조' ? colors.primary : colors.mute} />
+                        <Text className="text-caption text-sub">{e.type}</Text>
+                        <Text className="text-label font-semibold text-ink">{e.time}</Text>
+                        <Text className="text-caption text-mute">{e.height}cm</Text>
                       </View>
                     ))}
                   </View>
                 </View>
               )}
-            </View>
+            </Section>
           </>
         )}
-        <View className="h-[30px]" />
       </ScrollView>
 
-      {/* 지역 검색 모달 */}
-      <AppModal visible={searchModal} animationType="slide" transparent onRequestClose={() => setSearchModal(false)}>
-        <View className="flex-1 bg-black/60 justify-end">
-          <SheetPanel className="bg-[#0f3a50] rounded-t-3xl p-5">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-white text-[16px] font-bold">📍 지역 선택</Text>
-              <TouchableOpacity onPress={() => { setSearchModal(false); setSearchQuery(''); }}>
-                <Text className="text-white/60 text-[22px] leading-[24px]">✕</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              className="flex-row items-center bg-accent/[0.12] rounded-xl py-3 px-3.5 mb-3 border border-accent/30"
-              onPress={selectCurrentLocation}
-              disabled={locating}
-            >
-              {locating ? (
-                <ActivityIndicator size="small" color={colors.accent} className="mr-2" />
-              ) : (
-                <Text className="text-[16px] mr-2">📡</Text>
-              )}
-              <Text className="text-accent text-[14px] font-semibold">{locating ? '위치 찾는 중...' : '현재 위치 사용'}</Text>
-            </TouchableOpacity>
-            <TextInput
-              className="bg-white/[0.08] rounded-xl px-3.5 py-2.5 text-white text-[14px] mb-3 border border-white/15"
-              placeholder="지역 이름 검색..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-            <FlashList
-              data={filteredObs}
-              keyExtractor={(item) => item.code}
-              extraData={currentObs.code}
-              renderItem={({ item }) => {
-                const active = item.code === currentObs.code;
-                return (
-                  <TouchableOpacity
-                    className={`py-3.5 px-2 ${active ? 'bg-accent/10 rounded-lg' : ''}`}
-                    onPress={() => selectObs(item)}
-                  >
-                    <Text className={`text-[15px] ${active ? 'text-accent font-bold' : 'text-white/[0.85]'}`}>
-                      {active ? '✓ ' : ''}{item.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-              ItemSeparatorComponent={ObsSeparator}
-              style={{ maxHeight: 360 }}
-            />
-          </SheetPanel>
-        </View>
-      </AppModal>
+      {searchSheet}
     </View>
   );
 }

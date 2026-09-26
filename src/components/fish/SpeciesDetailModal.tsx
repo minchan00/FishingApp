@@ -1,7 +1,9 @@
 import { Image } from 'expo-image';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { BottomSheet } from '@/components/ui/Sheet';
 import type { TaxonResult } from './inaturalist';
-import { CloseX, cls, DetailRow, SheetModal } from './ui';
+import { DetailRow } from '@/components/ui/Badge';
 
 type Props = {
   fish: TaxonResult | null;
@@ -17,17 +19,11 @@ export function SpeciesDetailModal({ fish, onClose }: Props) {
   ].filter((i): i is { label: string; value: string } => !!i.value);
 
   return (
-    <SheetModal visible={fish !== null} onClose={onClose}>
-      <View className={cls.modalHeader}>
-        <View className="flex-1">
-          <Text className={cls.modalTitle}>{fish?.name}</Text>
-          <Text className="text-[rgba(255,255,255,0.4)] text-[11px] mt-[2px] italic">{fish?.scientific}</Text>
-        </View>
-        <CloseX onPress={onClose} />
-      </View>
+    <BottomSheet visible={fish !== null} onClose={onClose} title={fish?.name ?? ''}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {fish?.scientific ? <Text className="-mt-3 mb-4 text-caption italic text-mute">{fish.scientific}</Text> : null}
         {fish?.photoUrl ? (
-          <View className="mb-[12px]">
+          <View className="mb-4">
             <Image
               source={{ uri: fish.photoUrl }}
               style={{ width: '100%', height: 220, borderRadius: 12 }}
@@ -35,21 +31,19 @@ export function SpeciesDetailModal({ fish, onClose }: Props) {
               transition={200}
             />
             {fish.photoAttr ? (
-              <Text className="text-[rgba(255,255,255,0.25)] text-[9px] text-center mt-[4px]">📸 {fish.photoAttr}</Text>
+              <Text className="mt-1 text-center text-[10px] text-mute">{fish.photoAttr}</Text>
             ) : null}
           </View>
         ) : null}
-        <View className={cls.infoSection}>
-          <Text className={cls.infoSectionTitle}>📋 분류 정보</Text>
-          {rows.map((item) => (
-            <DetailRow key={item.label} label={item.label} value={item.value} italic={item.label === '학명'} />
+        <Text className="mb-1 text-label font-medium text-mute">분류 정보</Text>
+        <View className="rounded-card bg-surface px-4">
+          {rows.map((item, i) => (
+            <DetailRow key={item.label} label={item.label} value={item.value} italic={item.label === '학명'} divider={i < rows.length - 1} />
           ))}
         </View>
-        <Text className="text-[rgba(255,255,255,0.25)] text-[10px] text-center mt-[4px]">📚 iNaturalist</Text>
+        <Text className="mt-2 text-center text-caption text-mute">iNaturalist</Text>
       </ScrollView>
-      <TouchableOpacity className={`${cls.closeBtn} mt-[4px]`} onPress={onClose}>
-        <Text className={cls.btnText}>닫기</Text>
-      </TouchableOpacity>
-    </SheetModal>
+      <Button label="닫기" variant="secondary" onPress={onClose} className="mt-4" />
+    </BottomSheet>
   );
 }
