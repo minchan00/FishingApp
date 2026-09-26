@@ -7,7 +7,7 @@ const config: ExpoConfig = {
   scheme: 'fishingapp',
   version: '1.0.0',
   orientation: 'portrait',
-  platforms: ['ios', 'android'],
+  platforms: ['ios', 'android', 'web'],
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   android: {
@@ -67,6 +67,10 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  owner: 'minchan00',
+  extra: {
+    eas: { projectId: 'b2051432-b2bf-41f1-b0ef-4e39b1a362dc' },
+  },
   experiments: {
     typedRoutes: true,
   },
