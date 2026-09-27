@@ -35,6 +35,7 @@
 `text-display` 28 · `text-title` 22 · `text-heading` 18(섹션·시트 제목) · `text-body` 15(기본) · `text-label` 13 · `text-caption` 12
 
 - 화면 제목과 큰 숫자(물때 시각, 낚시 지수, 통계)는 명조 `font-serif`(고운바탕 Bold).
+  `font-serif`에는 굵기(`font-bold`, `text-title`처럼 굵기가 들어간 크기)를 같이 주지 않는다. 안드로이드에서 기본 글꼴로 바뀐다.
 - 본문·버튼·설명은 시스템 글꼴. 굵기는 제목만 semibold/bold.
 
 ## 모서리·여백

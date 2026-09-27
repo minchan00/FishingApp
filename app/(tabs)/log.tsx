@@ -33,7 +33,7 @@ function computeStats(logs: FishingLog[]) {
 function StatCard({ value, label }: { value: string | number; label: string }) {
   return (
     <Card className="flex-1">
-      <Text className="font-serif text-title text-ink" numberOfLines={1} adjustsFontSizeToFit>
+      <Text className="font-serif text-[22px] leading-[30px] text-ink" numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
       <Text className="mt-1 text-caption text-mute">{label}</Text>
