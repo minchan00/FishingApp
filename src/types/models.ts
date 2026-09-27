@@ -2,7 +2,7 @@
 // 나중에 백엔드를 바꿔도 화면 코드는 그대로 둘 수 있다.
 
 export type Rating = '대박' | '보통' | '꽝';
-export type PostCategory = '조황 정보' | '인증샷' | '낚시 팁' | '동출 모집';
+export type PostCategory = '조황 정보' | '인증샷' | '낚시 팁' | '동출 모집' | '방류 소식';
 
 export type Profile = {
   id: string;
@@ -124,4 +124,33 @@ export type FishAnalysis = {
   identification: FishIdentification;
   /** 오늘 남은 분석 횟수 */
   remainingToday: number;
+};
+
+/** 방류 알림 대상: 하굿둑·방조제 배수갑문 */
+export type ReleaseFacility = {
+  id: string;
+  name: string;
+  kind: '하굿둑' | '방조제';
+  region: string;
+  operator: string;
+};
+
+/**
+ * active: 지금 방류 중(실측) / window: 방류 승인 기간(조위에 따라 여닫음) / notice: 방류 예정 공지 / ended: 끝남
+ */
+export type ReleaseStatus = 'active' | 'window' | 'notice' | 'ended';
+/** official: 기관 API·자료 / notice: 기관 공지 / report: 관리자·사용자 입력 */
+export type ReleaseSource = 'official' | 'notice' | 'report';
+
+export type ReleaseEvent = {
+  id: number;
+  facilityId: string;
+  status: ReleaseStatus;
+  startsAt: string;
+  endsAt: string | null;
+  /** ㎥/s (톤/초). 공지에는 없을 수 있다 */
+  flowCms: number | null;
+  source: ReleaseSource;
+  sourceUrl: string | null;
+  note: string | null;
 };

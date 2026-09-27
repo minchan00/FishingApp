@@ -3,7 +3,7 @@
 import type { PostCategory, Rating } from '@/types/models';
 
 const RATINGS: readonly Rating[] = ['대박', '보통', '꽝'];
-const CATEGORIES: readonly PostCategory[] = ['조황 정보', '인증샷', '낚시 팁', '동출 모집'];
+const CATEGORIES: readonly PostCategory[] = ['조황 정보', '인증샷', '낚시 팁', '동출 모집', '방류 소식'];
 
 export function asRating(value: string): Rating {
   return (RATINGS as readonly string[]).includes(value) ? (value as Rating) : '보통';

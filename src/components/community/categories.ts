@@ -1,7 +1,7 @@
 import type { PostCategory } from '@/types/models';
 
 /** DB posts.category check 제약과 같은 값. zod enum에 쓰도록 튜플로 둔다 */
-export const POST_CATEGORIES = ['조황 정보', '인증샷', '낚시 팁', '동출 모집'] as const satisfies readonly PostCategory[];
+export const POST_CATEGORIES = ['조황 정보', '인증샷', '낚시 팁', '동출 모집', '방류 소식'] as const satisfies readonly PostCategory[];
 
 // PostCategory에 값이 추가되면 여기서 타입 오류가 나도록
 type MissingCategory = Exclude<PostCategory, (typeof POST_CATEGORIES)[number]>;

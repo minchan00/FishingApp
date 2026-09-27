@@ -135,6 +135,34 @@ describe('AI 사용량 제한', () => {
   });
 });
 
+describe('방류 알림', () => {
+  it('로그인 사용자는 시설과 방류 일정을 읽을 수 있다', async () => {
+    // 실제로는 service_role(동기화 함수)이 넣는다. 테스트 흉내 역할은 RLS 우회가 없어 관리자로 넣는다
+    await db.exec(`insert into public.release_events (facility_id, status, starts_at, ends_at, flow_cms, source) values ('yeongsan', 'window', now(), now() + interval '3 day', 12070, 'official')`);
+    assert.ok((await as('authenticated', 'select id from public.release_facilities')).rows.length >= 10);
+    assert.equal((await as('authenticated', `select id from public.release_events where facility_id = 'yeongsan'`)).rows.length, 1);
+  });
+
+  it('사용자는 시설·방류 일정을 바꿀 수 없다', async () => {
+    assert.ok(await blocked('authenticated', `insert into public.release_events (facility_id, status, starts_at, source) values ('geum', 'active', now(), 'report') returning id`));
+    assert.ok(await blocked('authenticated', `update public.release_events set status = 'ended' returning id`));
+    assert.ok(await blocked('authenticated', `delete from public.release_facilities returning id`));
+  });
+
+  it('관심 시설은 본인 것만 보고 추가·삭제한다', async () => {
+    await as('authenticated', `insert into public.release_subscriptions (facility_id) values ('yeongsan')`);
+    await as('authenticated', `insert into public.release_subscriptions (facility_id) values ('geum')`, B);
+    assert.equal((await as('authenticated', 'select facility_id from public.release_subscriptions')).rows.length, 1);
+    assert.ok(await blocked('authenticated', `insert into public.release_subscriptions (user_id, facility_id) values ('${B}', 'nakdong') returning facility_id`));
+    assert.ok(await blocked('authenticated', `delete from public.release_subscriptions where user_id = '${B}' returning facility_id`));
+  });
+
+  it("커뮤니티에 '방류 소식' 글을 쓸 수 있다", async () => {
+    const row = await one('authenticated', `insert into public.posts (category, content) values ('방류 소식', '영산강 하굿둑 방류 시작') returning id`);
+    assert.ok(row.id);
+  });
+});
+
 describe('회원 탈퇴', () => {
   // 실제 탈퇴는 delete-account Edge Function이 사진을 지운 뒤 auth 계정을 삭제한다.
   // 여기서는 계정 삭제가 모든 데이터로 연쇄 삭제되는지 확인한다.

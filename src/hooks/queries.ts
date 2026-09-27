@@ -6,6 +6,7 @@ import * as logs from '@/data/logs';
 import * as points from '@/data/points';
 import * as posts from '@/data/posts';
 import * as profile from '@/data/profile';
+import * as releases from '@/data/releases';
 import type { FishingLogInput, FishingPointInput, Post, PostInput } from '@/types/models';
 
 export const queryKeys = {
@@ -16,6 +17,9 @@ export const queryKeys = {
   favorites: ['favorites'] as const,
   posts: ['posts'] as const,
   comments: (postId: number) => ['comments', postId] as const,
+  releaseFacilities: ['release-facilities'] as const,
+  releaseEvents: ['release-events'] as const,
+  releaseSubscriptions: ['release-subscriptions'] as const,
 };
 
 // ── 프로필 ────────────────────────────────────
@@ -189,5 +193,36 @@ export function useDeleteComment() {
       qc.invalidateQueries({ queryKey: queryKeys.comments(postId) });
       qc.invalidateQueries({ queryKey: queryKeys.posts });
     },
+  });
+}
+
+// ── 방류 알림 ────────────────────────────────────
+export function useReleaseFacilities() {
+  return useQuery({ queryKey: queryKeys.releaseFacilities, queryFn: releases.listReleaseFacilities, staleTime: 60 * 60_000 });
+}
+
+export function useReleaseEvents() {
+  // 방류 상태는 몇 분 단위로 바뀔 수 있어 5분마다 새로 읽는다
+  return useQuery({ queryKey: queryKeys.releaseEvents, queryFn: () => releases.listReleaseEvents(), staleTime: 60_000, refetchInterval: 5 * 60_000 });
+}
+
+export function useReleaseSubscriptions() {
+  return useQuery({ queryKey: queryKeys.releaseSubscriptions, queryFn: releases.listReleaseSubscriptions });
+}
+
+export function useToggleReleaseSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ facilityId, on }: { facilityId: string; on: boolean }) => releases.setReleaseSubscription(facilityId, on),
+    onMutate: async ({ facilityId, on }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.releaseSubscriptions });
+      const prev = qc.getQueryData<string[]>(queryKeys.releaseSubscriptions);
+      qc.setQueryData<string[]>(queryKeys.releaseSubscriptions, (ids = []) =>
+        on ? [...new Set([...ids, facilityId])] : ids.filter((id) => id !== facilityId),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => qc.setQueryData(queryKeys.releaseSubscriptions, ctx?.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.releaseSubscriptions }),
   });
 }

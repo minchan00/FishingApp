@@ -1,4 +1,3 @@
-// supabase gen types typescript --linked 로 생성 (npm run db:types). 직접 수정하지 말 것.
 export type Json =
   | string
   | number
@@ -408,6 +407,122 @@ export type Database = {
           nickname?: string
         }
         Relationships: []
+      }
+      release_events: {
+        Row: {
+          created_at: string
+          ends_at: string | null
+          facility_id: string
+          flow_cms: number | null
+          id: number
+          note: string | null
+          source: string
+          source_url: string | null
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at?: string | null
+          facility_id: string
+          flow_cms?: number | null
+          id?: never
+          note?: string | null
+          source: string
+          source_url?: string | null
+          starts_at: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string | null
+          facility_id?: string
+          flow_cms?: number | null
+          id?: never
+          note?: string | null
+          source?: string
+          source_url?: string | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_events_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "release_facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      release_facilities: {
+        Row: {
+          id: string
+          kind: string
+          lat: number | null
+          lng: number | null
+          name: string
+          operator: string
+          region: string
+          sort_order: number
+        }
+        Insert: {
+          id: string
+          kind: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          operator: string
+          region: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          kind?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          operator?: string
+          region?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      release_subscriptions: {
+        Row: {
+          created_at: string
+          facility_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          facility_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_subscriptions_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "release_facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "release_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
