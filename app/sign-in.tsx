@@ -88,8 +88,8 @@ export default function SignInScreen() {
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary-soft">
             <Icon name="anchor" size={30} color={colors.primary} />
           </View>
-          <Text className="text-display text-ink">낚시 일지</Text>
-          <Text className="mt-1 text-body text-sub">바다와 함께하는 낚시 기록</Text>
+          <Text className="text-display text-ink">짬낚고</Text>
+          <Text className="mt-1 text-body text-sub">짬 내서 떠나는 워킹 낚시</Text>
         </View>
 
         {/* 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%) — Button kakao 변형이 맞춘다 */}

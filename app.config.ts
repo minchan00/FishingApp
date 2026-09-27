@@ -2,7 +2,7 @@ import type { ExpoConfig } from 'expo/config';
 
 // 빌드 시점 값(지도 키, Sentry 설정 등)은 .env 또는 EAS 환경변수로 주입한다.
 const config: ExpoConfig = {
-  name: '낚시 일지',
+  name: '짬낚고',
   slug: 'fishingapp',
   scheme: 'fishingapp',
   version: '1.0.0',
