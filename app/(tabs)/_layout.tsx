@@ -12,7 +12,7 @@ const TABS: readonly { name: string; label: string; icon: IconName }[] = [
 ];
 
 /** 아이콘 + 라벨이 들어가는 탭바 본체 높이 (시스템 내비게이션 바 영역 제외) */
-const TAB_BAR_CONTENT_HEIGHT = 56;
+const TAB_BAR_CONTENT_HEIGHT = 60;
 
 export default function TabsLayout() {
   // 폰마다 하단 시스템 바(제스처 바, 3버튼 바) 높이가 달라서 실제 여백을 읽어 더한다
@@ -26,7 +26,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.navy,
         tabBarInactiveTintColor: colors.mute,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: '600', marginTop: 2, marginBottom: 2 },
         tabBarStyle: {
           backgroundColor: colors.bg,
           borderTopColor: colors.line,

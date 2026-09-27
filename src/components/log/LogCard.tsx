@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { Icon } from '@/components/ui/Icon';
 import { colors } from '@/theme/colors';
 import type { Catch, FishingLog } from '@/types/models';
-import { formatKoreanDate } from './format';
+import { formatKoreanDate, weatherText } from './format';
 
 const RATING_BADGE: Record<FishingLog['rating'], { box: string; text: string }> = {
   대박: { box: 'bg-primary-soft', text: 'text-primary' },
@@ -45,7 +45,7 @@ export const LogCard = memo(function LogCard({ log, onPress }: Props) {
         </Text>
 
         <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          <Text className="text-label text-sub">{log.weather}</Text>
+          <Text className="text-label text-sub">{weatherText(log.weather)}</Text>
           {log.duration ? (
             <View className="flex-row items-center gap-1">
               <Icon name="clock" size={13} color={colors.mute} />

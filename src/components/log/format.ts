@@ -17,6 +17,11 @@ export function isValidYmd(value: string): boolean {
 }
 
 /** YYYY-MM-DD → '2026. 9. 26.' (기존 toLocaleDateString('ko-KR') 표시와 같은 모양) */
+/** '맑음 ☀️' 같은 저장값에서 이모지를 빼고 글자만 보여준다 */
+export function weatherText(weather: string): string {
+  return weather.replace(/[p{Extended_Pictographic}️]/gu, '').trim();
+}
+
 export function formatKoreanDate(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd);
   if (!m) return ymd;

@@ -29,12 +29,14 @@ export default function CatchBanner() {
     return (
       <Pressable
         onPress={() => router.push('/community')}
-        className="rounded-card bg-navy-light p-5 active:opacity-80"
-        style={{ height: BANNER_HEIGHT }}
+        className="flex-row items-center gap-3 rounded-card bg-surface p-4 active:bg-surface-strong"
       >
-        <Icon name="camera" size={26} color={colors.white} />
-        <Text className="mt-auto text-heading text-white">오늘 잡은 물고기를 자랑해 보세요</Text>
-        <Text className="mt-1 text-label text-white/70">커뮤니티에 인증샷을 올리면 여기에 보여요</Text>
+        <Icon name="camera" size={20} color={colors.primary} />
+        <View className="flex-1">
+          <Text className="text-body font-semibold text-ink">오늘 잡은 물고기를 자랑해 보세요</Text>
+          <Text className="mt-0.5 text-caption text-mute">인증샷을 올리면 여기에 보여요</Text>
+        </View>
+        <Icon name="chevron-right" size={18} color={colors.mute} />
       </Pressable>
     );
   }

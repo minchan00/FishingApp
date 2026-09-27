@@ -1,8 +1,8 @@
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CatchBanner from '@/components/home/CatchBanner';
+import RecentLogs from '@/components/home/RecentLogs';
 import ObsPickerModal from '@/components/home/ObsPickerModal';
 import { Card } from '@/components/ui/Card';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -17,12 +17,6 @@ import { useProfile } from '@/hooks/queries';
 import { useCurrentWeather, useTide, useTideForecastWeek } from '@/hooks/useWeather';
 import { colors } from '@/theme/colors';
 
-const QUICK_ACTIONS: { icon: IconName; title: string; sub: string; href: Href }[] = [
-  { icon: 'map-pin', title: '낚시 포인트', sub: '내 주변 명소', href: '/map' },
-  { icon: 'book-open', title: '낚시 일지', sub: '기록 & 추억', href: '/log' },
-  { icon: 'fish', title: '어종 도감', sub: '어종 & 공략법', href: '/fish' },
-  { icon: 'users', title: '커뮤니티', sub: '낚시인 모임', href: '/community' },
-];
 
 /** 실측값이 있으면 실측, 없으면 예측 조위(cm) */
 const tideLevel = (item: TideItem): number | null => {
@@ -81,7 +75,6 @@ function SmallAction({ icon, label, onPress }: { icon: IconName; label: string; 
 }
 
 export default function HomeScreen() {
-  const { top } = useSafeAreaInsets();
   const profile = useProfile();
   const userNickname = profile.data?.nickname || '낚시꾼';
 
@@ -126,18 +119,18 @@ export default function HomeScreen() {
   const renderWeatherCard = () => {
     if (locating || weather.isPending || tide.isPending || tideForecast.isPending) {
       return (
-        <Card className="items-center py-10">
+        <Card className="flex-row items-center gap-3">
           <ActivityIndicator color={colors.primary} />
-          <Text className="mt-3 text-label text-mute">날씨 & 조위 불러오는 중...</Text>
+          <Text className="text-label text-mute">날씨와 물때를 불러오는 중...</Text>
         </Card>
       );
     }
     if (!weather.data) {
       return (
-        <Card className="items-center py-10">
-          <Icon name="cloud-off" size={24} color={colors.mute} />
-          <Text className="mt-2 text-label text-mute">날씨 정보를 불러올 수 없어요</Text>
-          <Pressable onPress={refetchAll} className="mt-2 px-3 py-1.5" accessibilityRole="button">
+        <Card className="flex-row items-center gap-3">
+          <Icon name="cloud-off" size={20} color={colors.mute} />
+          <Text className="flex-1 text-label text-mute">날씨 정보를 불러올 수 없어요</Text>
+          <Pressable onPress={refetchAll} className="px-2 py-1" accessibilityRole="button">
             <Text className="text-label font-semibold text-primary">다시 시도</Text>
           </Pressable>
         </Card>
@@ -259,29 +252,16 @@ export default function HomeScreen() {
           title={`안녕하세요, ${userNickname}님`}
           right={<IconButton icon="menu" label="설정" onPress={() => router.push('/settings')} />}
         >
-          <View className="px-5 pb-5">
+          <View className="px-5 pb-1">
             <CatchBanner />
           </View>
         </ScreenHeader>
         <View className="px-5 pt-5">
         {renderWeatherCard()}
+        <RecentLogs />
 
-        <Text className="mb-2.5 mt-6 text-label font-medium text-mute">빠른 시작</Text>
-        <View className="flex-row flex-wrap justify-between gap-y-3">
-          {QUICK_ACTIONS.map((a) => (
-            <Card key={a.title} onPress={() => router.push(a.href)} className="w-[48.5%]">
-              <View className="mb-3 h-10 w-10 items-center justify-center rounded-full bg-bg">
-                <Icon name={a.icon} size={20} color={colors.primary} />
-              </View>
-              <Text className="text-body font-semibold text-ink">{a.title}</Text>
-              <Text className="mt-0.5 text-caption text-mute">{a.sub}</Text>
-            </Card>
-          ))}
-        </View>
         </View>
       </ScrollView>
-      {/* 헤더가 스크롤로 올라가도 상태바 글자(흰색)가 보이도록 뒤를 남색으로 덮는다 */}
-      <View className="absolute left-0 right-0 top-0 bg-navy" style={{ height: top }} />
 
       {/* 일자별 상세 예보 모달 */}
       <AppModal visible={detailModal} animationType="slide" onRequestClose={() => setDetailModal(false)}>

@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { Button } from '@/components/ui/Button';
 import { BottomSheet } from '@/components/ui/Sheet';
 import type { FishingLog } from '@/types/models';
-import { formatKoreanDate } from './format';
+import { formatKoreanDate, weatherText } from './format';
 import { RatingBadge } from './LogCard';
 
 type Props = {
@@ -21,7 +21,7 @@ export function LogDetailModal({ log, visible, onClose, onEdit, onDelete }: Prop
         <>
           <View className="-mt-2 mb-4 flex-row flex-wrap items-center gap-2">
             <Text className="text-label text-mute">
-              {formatKoreanDate(log.fishedOn)} · {log.weather}
+              {formatKoreanDate(log.fishedOn)} · {weatherText(log.weather)}
               {log.duration ? ` · ${log.duration}시간` : ''}
             </Text>
             <RatingBadge rating={log.rating} />

@@ -91,11 +91,11 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
           onPress={() => setSearchModal(true)}
           accessibilityRole="button"
           accessibilityLabel="지역 선택"
-          className="h-9 flex-row items-center gap-1 rounded-full bg-navy-light px-3 active:opacity-80"
+          className="h-9 flex-row items-center gap-1 rounded-full bg-surface px-3 active:bg-surface-strong"
         >
-          <Icon name="map-pin" size={14} color={colors.white} />
-          <Text className="text-label font-medium text-white">{currentObs.name}</Text>
-          <Icon name="chevron-down" size={14} color={colors.white} />
+          <Icon name="map-pin" size={14} color={colors.sub} />
+          <Text className="text-label font-medium text-ink">{currentObs.name}</Text>
+          <Icon name="chevron-down" size={14} color={colors.sub} />
         </Pressable>
       }
     />

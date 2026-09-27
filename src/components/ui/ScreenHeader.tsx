@@ -20,12 +20,12 @@ type Props = {
   right?: ReactNode;
   /** 제목 아래 헤더 안에 이어서 그릴 내용 (예: 홈의 사진 배너) */
   children?: ReactNode;
-  /** brand: 남색 배경 + 흰 글자 (기본) / plain: 흰 배경 */
+  /** plain: 흰 배경 (기본) / brand: 남색 배경 + 흰 글자 */
   tone?: 'brand' | 'plain';
 };
 
 /** 화면 맨 위 제목 영역. 상태바 높이만큼 자동으로 내려온다 */
-export function ScreenHeader({ title, eyebrow, back, onBack, right, children, tone = 'brand' }: Props) {
+export function ScreenHeader({ title, eyebrow, back, onBack, right, children, tone = 'plain' }: Props) {
   const { top } = useSafeAreaInsets();
   const onNavy = tone === 'brand';
   return (

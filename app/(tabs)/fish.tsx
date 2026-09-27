@@ -25,7 +25,7 @@ import { colors } from '@/theme/colors';
 import type { DogamEntry } from '@/types/models';
 
 const RECOMMENDED = [
-  { category: '바다낚시 인기', species: ['광어', '우럭', '감성돔', '농어', '참돔', '방어', '고등어', '갈치', '볼락', '노래미', '숭어', '전어', '삼치', '돌돔'] },
+  { category: '인기 어종', species: ['광어', '우럭', '감성돔', '농어', '참돔', '방어', '고등어', '갈치', '볼락', '노래미', '숭어', '전어', '삼치', '돌돔'] },
   { category: '두족류', species: ['주꾸미', '오징어', '갑오징어', '문어', '낙지', '꼴뚜기'] },
   { category: '갑각류', species: ['꽃게', '대게', '새우', '보리새우'] },
   { category: '민물낚시', species: ['붕어', '잉어', '배스', '쏘가리', '메기', '가물치', '피라미'] },
@@ -143,7 +143,7 @@ export default function FishScreen() {
 
   return (
     <View className="flex-1 bg-bg">
-      <ScreenHeader title="어종 도감" eyebrow="AI 분석 · 자동 등록" />
+      <ScreenHeader title="어종 도감" />
 
       {/* 탭 */}
       <View className="mx-5 mb-4 flex-row rounded-field bg-surface p-1">
@@ -173,8 +173,8 @@ export default function FishScreen() {
                 <Icon name="camera" size={20} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-body font-semibold text-ink">AI 어종 분석 & 자동 등록</Text>
-                <Text className="mt-0.5 text-label text-mute">사진을 찍으면 AI가 어종을 분석하고 도감 + 일지에 자동 등록해줘요!</Text>
+                <Text className="text-body font-semibold text-ink">AI 어종 분석</Text>
+                <Text className="mt-0.5 text-label text-mute">사진으로 어종을 알아보고 일지에 기록해요</Text>
               </View>
             </View>
             <View className="flex-row gap-2">
@@ -249,7 +249,7 @@ export default function FishScreen() {
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {RECOMMENDED.map((cat) => (
+              {RECOMMENDED.slice(0, 1).map((cat) => (
                 <View key={cat.category} className="mb-5">
                   <Text className="mb-2 px-5 text-label font-medium text-mute">{cat.category}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-5">
@@ -259,10 +259,6 @@ export default function FishScreen() {
                   </ScrollView>
                 </View>
               ))}
-              <View className="mx-5 mt-1 flex-row items-center gap-2.5 rounded-card bg-surface p-4">
-                <Icon name="info" size={16} color={colors.mute} />
-                <Text className="flex-1 text-label text-sub">카메라로 물고기를 찍으면 AI가 자동으로 분석 & 도감 + 일지에 등록해줘요!</Text>
-              </View>
               <View className="h-[30px]" />
             </ScrollView>
           )}

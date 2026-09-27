@@ -26,7 +26,6 @@ const FALLBACK_CAMERA = { latitude: 37.4563, longitude: 126.4816, zoom: ZOOM.fal
 export default function MapScreen() {
   const user = useUser();
   const [activeFilter, setActiveFilter] = useState<string>('전체');
-  const [activeSpecies, setActiveSpecies] = useState<string>('전체');
   const [search, setSearch] = useState('');
   const [userLocation, setUserLocation] = useState<Coords | null>(null);
   const [selectedPointId, setSelectedPointId] = useState<number | null>(null);
@@ -83,11 +82,11 @@ export default function MapScreen() {
 
   const filtered = points
     .filter((p) => {
-      const matchSearch = p.name.includes(search) || p.address.includes(search);
+      // 어종 칩을 없앤 대신 검색어로 어종도 찾는다
+      const matchSearch = p.name.includes(search) || p.address.includes(search) || p.species.some((s) => s.includes(search));
       const matchType = activeFilter === '전체' || p.type === activeFilter;
-      const matchSpecies = activeSpecies === '전체' || p.species.includes(activeSpecies);
       const matchFav = !showFavorites || isFavorite(p.id);
-      return matchSearch && matchType && matchSpecies && matchFav;
+      return matchSearch && matchType && matchFav;
     })
     .sort((a, b) => {
       if (!userLocation) return 0;
@@ -156,7 +155,7 @@ export default function MapScreen() {
         <Icon name="search" size={18} color={colors.mute} />
         <TextInput
           className="ml-2 flex-1 text-body text-ink"
-          placeholder="포인트 이름, 지역 검색..."
+          placeholder="포인트 이름, 지역, 어종 검색"
           placeholderTextColor={colors.mute}
           value={search}
           onChangeText={setSearch}
@@ -175,12 +174,6 @@ export default function MapScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 grow-0" contentContainerClassName="gap-2 px-5">
         {FILTERS.map((f) => (
           <Chip key={f} label={f} selected={activeFilter === f} onPress={() => setActiveFilter(f)} />
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2 grow-0" contentContainerClassName="gap-2 px-5">
-        {SPECIES.map((s) => (
-          <Chip key={s} label={s} selected={activeSpecies === s} onPress={() => setActiveSpecies(s)} />
         ))}
       </ScrollView>
 
@@ -276,17 +269,16 @@ export default function MapScreen() {
               >
                 <View className="flex-1">
                   <Text className="text-body font-semibold text-ink" numberOfLines={1}>{item.name}</Text>
-                  <Text className="mt-0.5 text-caption text-mute" numberOfLines={1}>
-                    {item.address}
-                    {userLocation ? ` · ${formatDistance(userLocation, item.lat, item.lng)}` : ''}
+                  <Text className="mt-0.5 text-label text-mute" numberOfLines={1}>
+                    {[
+                      item.type,
+                      userLocation ? formatDistance(userLocation, item.lat, item.lng) : item.address,
+                      item.rating > 0 ? `★ ${item.rating}` : null,
+                    ].filter(Boolean).join(' · ')}
                   </Text>
-                  <View className="mt-2 flex-row flex-wrap gap-1.5">
-                    <PointBadges point={item} isMine={isMine(item)} />
-                    <Badge label={item.type} />
-                    {item.species.map((s) => (
-                      <Badge key={s} label={s} />
-                    ))}
-                  </View>
+                  {item.species.length > 0 ? (
+                    <Text className="mt-0.5 text-caption text-mute" numberOfLines={1}>{item.species.join(', ')}</Text>
+                  ) : null}
                 </View>
                 <Pressable
                   onPress={() => toggleFavorite(item.id)}
