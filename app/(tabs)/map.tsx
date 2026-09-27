@@ -18,7 +18,7 @@ import { useUser } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
 import type { FishingPoint, FishingPointInput } from '@/types/models';
 
-const FILTERS = ['전체', '방파제', '갯바위', '낚시터', '선상', '워킹'] as const;
+const FILTERS = ['전체', '방파제', '갯바위', '해변', '낚시공원'] as const;
 const SPECIES = ['전체', '광어', '우럭', '감성돔', '농어', '참돔', '고등어', '갈치', '주꾸미'] as const;
 
 const FALLBACK_CAMERA = { latitude: 37.4563, longitude: 126.4816, zoom: ZOOM.fallback };
@@ -181,7 +181,7 @@ export default function MapScreen() {
         <NaverMapView
           ref={mapRef}
           style={{ flex: 1 }}
-          mapType="Basic"
+          mapType="Hybrid"
           initialCamera={userLocation ? { ...userLocation, zoom: ZOOM.userArea } : FALLBACK_CAMERA}
           isShowLocationButton
           isShowZoomControls={false}
