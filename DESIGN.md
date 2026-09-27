@@ -1,7 +1,8 @@
 # 디자인 기준
 
-남색 헤더 + 흰 본문. 화면 위는 짙은 남색(브랜드), 내용은 흰 바탕·연회색 면. 장식보다 여백과 글자 크기로 위계를 만든다.
-홈은 남색 헤더 안에 커뮤니티 인증샷 사진 배너를 둔다 (사진 중심).
+차분한 흰 화면. 흰 바탕·연회색 면, 남색은 주요 버튼·선택 표시에만. 장식보다 여백과 글자 크기로 위계를 만든다.
+한 화면에 핵심 정보 한두 개만 크게. 칩은 한 줄까지, 목록 한 줄에 배지는 하나까지(나머지는 "a · b · c" 텍스트).
+하단 탭과 같은 메뉴를 화면 안에 다시 만들지 않는다.
 
 ## 색 (tailwind 클래스 / `colors.*`)
 | 용도 | 클래스 | 값 |
@@ -36,11 +37,11 @@
 ## 공통 부품 (`src/components/ui/`)
 | 부품 | 쓰는 곳 |
 |---|---|
-| `ScreenHeader` / `IconButton` | 화면 맨 위 남색 헤더(`tone="plain"`이면 흰색). 헤더 안 IconButton은 자동으로 흰색. 상태바 글자는 흰색이므로 헤더 없는 흰 화면은 `<StatusBar style="dark" />` |
+| `ScreenHeader` / `IconButton` | 화면 맨 위 제목 (기본 흰색, `tone="brand"`면 남색 + 흰 글자, IconButton 색 자동) |
 | `Button` | primary(주 행동, 화면당 하나) · secondary · ghost · danger · kakao |
 | `TextField` | 라벨 + 입력 + 오류. react-hook-form `Controller`로 연결 |
 | `Card` | 정보 묶음. `tone="outline"`은 흰 바탕 + 테두리 |
-| `Chip` | 필터·선택지 |
+| `Chip` | 필터·선택지 (선택 시 연한 파랑) |
 | `ListRow` | 설정·목록 한 줄 (아이콘, 제목, 값, 화살표) |
 | `BottomSheet` | 아래에서 올라오는 시트 (손잡이, 제목, 닫기, 하단 바 여백 자동) |
 | `AppModal` | 전체 화면 모달 |
