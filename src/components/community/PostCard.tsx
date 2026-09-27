@@ -26,7 +26,7 @@ export function Avatar({ size = 36 }: { size?: number }) {
 /** 커뮤니티 피드 게시글 한 개 */
 export const PostCard = memo(function PostCard({ post, isMine, onDelete, onToggleLike, onOpenComments }: Props) {
   return (
-    <View className="border-b border-line px-5 py-4">
+    <View className="mx-4 mb-2.5 rounded-card bg-card px-4 py-4">
       <View className="flex-row items-center">
         <Avatar />
         <View className="ml-2.5 flex-1">

@@ -18,6 +18,7 @@ import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SEA_TEXT_SHADOW, SeaScreen } from '@/components/ui/Sea';
 import { BottomSheet } from '@/components/ui/Sheet';
 import { identifyFish } from '@/data/ai';
 import { useDogam } from '@/hooks/queries';
@@ -142,11 +143,11 @@ export default function FishScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-bg">
+    <SeaScreen>
       <ScreenHeader title="어종 도감" />
 
       {/* 탭 */}
-      <View className="mx-5 mb-4 flex-row rounded-field bg-surface p-1">
+      <View className="mx-4 mb-3 flex-row rounded-field bg-white/20 p-1">
         {tabs.map((t) => {
           const selected = activeTab === t.key;
           return (
@@ -155,9 +156,9 @@ export default function FishScreen() {
               onPress={() => setActiveTab(t.key)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              className={`h-9 flex-1 items-center justify-center rounded-[10px] ${selected ? 'bg-bg' : ''}`}
+              className={`h-9 flex-1 items-center justify-center rounded-[10px] ${selected ? 'bg-card' : ''}`}
             >
-              <Text className={`text-label ${selected ? 'font-semibold text-ink' : 'font-medium text-mute'}`}>{t.label}</Text>
+              <Text className={`text-label ${selected ? 'font-semibold text-ink' : 'font-medium text-white'}`}>{t.label}</Text>
             </Pressable>
           );
         })}
@@ -167,7 +168,7 @@ export default function FishScreen() {
         <>
           {/* AI 분석 */}
           {/* 갤러리(secondary) 버튼이 면 색과 겹치지 않도록 흰 바탕 + 테두리 카드 */}
-          <Card tone="outline" className="mx-5 mb-4">
+          <Card className="mx-4 mb-3">
             <View className="mb-4 flex-row items-center gap-3">
               <View className="h-11 w-11 items-center justify-center rounded-full bg-primary-soft">
                 <Icon name="camera" size={20} color={colors.primary} />
@@ -188,7 +189,7 @@ export default function FishScreen() {
           </Card>
 
           {/* 검색 */}
-          <View className="mx-5 mb-3 h-[44px] flex-row items-center rounded-field bg-surface px-3.5">
+          <View className="mx-4 mb-3 h-[44px] flex-row items-center rounded-field bg-card px-3.5">
             <Icon name="search" size={18} color={colors.mute} />
             <TextInput
               className="ml-2 flex-1 text-body text-ink"
@@ -209,17 +210,17 @@ export default function FishScreen() {
             <View className="flex-1">
               {taxa.isLoading || (search.trim() !== keyword) ? (
                 <View className="items-center py-14">
-                  <ActivityIndicator color={colors.primary} size="large" />
-                  <Text className="mt-3 text-label text-mute">검색 중...</Text>
+                  <ActivityIndicator color={colors.white} size="large" />
+                  <Text className="mt-3 text-label text-white" style={SEA_TEXT_SHADOW}>검색 중...</Text>
                 </View>
               ) : searchResults.length > 0 ? (
                 <FlashList
                   data={searchResults}
                   keyExtractor={(item) => item.id}
-                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                  contentContainerStyle={{ paddingHorizontal: 16 }}
                   renderItem={({ item }) => (
                     <Pressable
-                      className="flex-row items-center gap-3 border-b border-line py-3 active:opacity-70"
+                      className="mb-2 flex-row items-center gap-3 rounded-card bg-card px-3 py-3 active:opacity-80"
                       onPress={() => setSelectedFish(item)}
                     >
                       {item.photoUrl ? (
@@ -251,8 +252,8 @@ export default function FishScreen() {
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {RECOMMENDED.slice(0, 1).map((cat) => (
                 <View key={cat.category} className="mb-5">
-                  <Text className="mb-2 px-5 text-label font-medium text-mute">{cat.category}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-5">
+                  <Text className="mb-2 px-5 text-label font-semibold text-white" style={SEA_TEXT_SHADOW}>{cat.category}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-4">
                     {cat.species.map((name) => (
                       <Chip key={name} label={name} onPress={() => searchRecommended(name)} />
                     ))}
@@ -306,6 +307,6 @@ export default function FishScreen() {
       <DogamMemoModal entry={editEntry} onClose={() => setEditEntry(null)} />
 
       <SpeciesDetailModal fish={selectedFish} onClose={() => setSelectedFish(null)} />
-    </View>
+    </SeaScreen>
   );
 }

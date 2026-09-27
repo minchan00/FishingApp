@@ -2,6 +2,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SEA_TEXT_SHADOW } from '@/components/ui/Sea';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { colors } from '@/theme/colors';
 import type { DogamEntry } from '@/types/models';
@@ -32,14 +33,14 @@ export function MyDogamTab({ entries, isLoading, error, onSelect }: Props) {
       numColumns={2}
       keyExtractor={(fish) => fish.species}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4 }}
       ListHeaderComponent={
-        <Text className="mb-3 text-label text-mute">총 {entries.length}종 기록됨 · 탭하면 메모 수정 가능</Text>
+        <Text className="mb-3 text-label text-white/85" style={SEA_TEXT_SHADOW}>총 {entries.length}종 기록됨 · 탭하면 메모 수정 가능</Text>
       }
       ListEmptyComponent={
         isLoading ? (
           <View className="items-center py-14">
-            <ActivityIndicator color={colors.primary} size="large" />
+            <ActivityIndicator color={colors.white} size="large" />
           </View>
         ) : error ? (
           <EmptyState icon="alert-circle" title="도감을 불러오지 못했어요." description={error.message} />
@@ -51,7 +52,7 @@ export function MyDogamTab({ entries, isLoading, error, onSelect }: Props) {
       renderItem={({ item: fish, index }) => (
         // 열 너비가 50%씩이므로 카드 96%(= 전체의 48%)를 양 끝에 붙여 두 카드 사이 간격을 만든다
         <Pressable
-          className={`mb-3 w-[96%] overflow-hidden rounded-card border border-line bg-bg active:opacity-70 ${index % 2 === 0 ? 'self-start' : 'self-end'}`}
+          className={`mb-3 w-[96%] overflow-hidden rounded-card bg-card active:opacity-80 ${index % 2 === 0 ? 'self-start' : 'self-end'}`}
           onPress={() => onSelect(fish)}
         >
           {fish.imageUrl ? (
@@ -67,7 +68,7 @@ export function MyDogamTab({ entries, isLoading, error, onSelect }: Props) {
             {fish.bestLocation ? <Meta icon="map-pin" text={fish.bestLocation} /> : null}
             {fish.totalCount > 1 ? <Meta icon="hash" text={`${fish.totalCount}마리`} /> : null}
           </View>
-          <View className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full border border-line bg-bg">
+          <View className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full bg-surface">
             <Icon name="edit-2" size={13} color={colors.sub} />
           </View>
         </Pressable>

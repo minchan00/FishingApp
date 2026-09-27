@@ -48,7 +48,7 @@ export function BottomSheet({ visible, onClose, title, children, maxHeightClass 
     <AppModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end" style={{ backgroundColor: colors.overlay }}>
         <Pressable className="flex-1" onPress={onClose} accessibilityLabel="닫기" />
-        <SheetPanel className={`rounded-t-sheet bg-bg px-5 pt-2.5 ${maxHeightClass}`}>
+        <SheetPanel className={`rounded-t-sheet bg-card px-5 pt-2.5 ${maxHeightClass}`}>
           <View className="mb-2 items-center">
             <View className="h-1 w-10 rounded-full bg-line" />
           </View>

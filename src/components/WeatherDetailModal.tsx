@@ -91,7 +91,7 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
           onPress={() => setSearchModal(true)}
           accessibilityRole="button"
           accessibilityLabel="지역 선택"
-          className="h-9 flex-row items-center gap-1 rounded-full bg-surface px-3 active:bg-surface-strong"
+          className="h-9 flex-row items-center gap-1 rounded-full bg-card px-3 active:bg-surface"
         >
           <Icon name="map-pin" size={14} color={colors.sub} />
           <Text className="text-label font-medium text-ink">{currentObs.name}</Text>
@@ -177,7 +177,7 @@ export default function WeatherDetailModal({ obs, onClose }: Props) {
                 onPress={() => setSelectedDay(i)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
-                className={`min-w-[68px] items-center rounded-card px-3 py-2.5 ${active ? 'bg-ink' : 'bg-surface active:bg-surface-strong'}`}
+                className={`min-w-[68px] items-center rounded-card px-3 py-2.5 ${active ? 'bg-navy' : 'bg-card active:bg-surface'}`}
               >
                 <Text className={`text-caption ${active ? 'font-semibold text-white' : 'text-sub'}`}>
                   {isToday(day.date) ? '오늘' : formatDate(day.date)}

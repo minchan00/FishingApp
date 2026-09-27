@@ -1,22 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { StatusBar } from 'expo-status-bar';
+import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
-import { Icon } from '@/components/ui/Icon';
+import { ArtBackdrop } from '@/components/LoadingScreen';
 import { TextField } from '@/components/ui/TextField';
+import { LINKS } from '@/constants/links';
 import { signIn, signInWithKakao, signUp } from '@/data/auth';
 import { captureError } from '@/lib/sentry';
 import {
   PASSWORD_MIN, signInSchema, signUpSchema, type AuthFormInput, type AuthFormValues,
 } from '@/schemas/auth';
 import { NICKNAME_MAX } from '@/schemas/profile';
-import { colors } from '@/theme/colors';
 
 type Mode = 'login' | 'register';
+
 
 // 두 모드가 값 모양을 공유하므로 resolver만 바꿔 끼운다
 const loginResolver = zodResolver(signInSchema);
@@ -26,6 +29,9 @@ const registerResolver = zodResolver(signUpSchema);
 export default function SignInScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [kakaoLoading, setKakaoLoading] = useState(false);
+  // 처음엔 카카오 버튼과 '이메일로 시작하기'만, 누르면 이메일 입력칸을 펼친다
+  const [emailOpen, setEmailOpen] = useState(false);
+  const { bottom } = useSafeAreaInsets();
 
   const {
     control, handleSubmit, clearErrors,
@@ -78,26 +84,30 @@ export default function SignInScreen() {
   const onSubmit = handleSubmit(mode === 'login' ? handleLogin : handleRegister);
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-bg" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar style="dark" />
-      <ScrollView
-        contentContainerClassName="grow justify-center bg-bg px-6 py-12"
-        keyboardShouldPersistTaps="handled"
-      >
-        <View className="mb-10 items-center">
-          <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary-soft">
-            <Icon name="anchor" size={30} color={colors.primary} />
-          </View>
-          <Text className="text-display text-ink">짬낚고</Text>
-          <Text className="mt-1 text-body text-sub">짬 내서 떠나는 워킹 낚시</Text>
-        </View>
+    <View className="flex-1 bg-navy">
+      <StatusBar style="light" />
+      <ArtBackdrop />
 
-        {/* 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%) — Button kakao 변형이 맞춘다 */}
-        <Button label="카카오로 시작하기" variant="kakao" icon="message-circle" onPress={handleKakao} loading={kakaoLoading} disabled={busy} />
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View className="max-h-[78%] rounded-t-[28px] bg-bg" style={{ shadowColor: '#281E14', shadowOpacity: 0.18, shadowRadius: 30, shadowOffset: { width: 0, height: -10 }, elevation: 12 }}>
+          <ScrollView
+            contentContainerClassName="px-6 pt-7"
+            contentContainerStyle={{ paddingBottom: 28 + bottom }}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            <Text className="mb-5 text-center font-serif text-[19px] text-ink">오늘, 짬낚 갈까요?</Text>
 
+            {/* 카카오 로그인 디자인 가이드: 컨테이너 #FEE500, 레이블 검정(85%) — Button kakao 변형이 맞춘다 */}
+            <Button label="카카오로 시작하기" variant="kakao" icon="message-circle" onPress={handleKakao} loading={kakaoLoading} disabled={busy} />
+
+            {!emailOpen ? (
+              <Button label="이메일로 시작하기" variant="light" onPress={() => setEmailOpen(true)} disabled={busy} className="mt-2.5 border border-line" />
+            ) : (
+              <>
         <View className="my-6 flex-row items-center">
           <View className="flex-1 bg-line" style={{ height: StyleSheet.hairlineWidth }} />
-          <Text className="mx-3 text-caption text-mute">또는 이메일로</Text>
+          <Text className="mx-3 text-caption text-mute">이메일로</Text>
           <View className="flex-1 bg-line" style={{ height: StyleSheet.hairlineWidth }} />
         </View>
 
@@ -107,7 +117,7 @@ export default function SignInScreen() {
             return (
               <Pressable
                 key={m}
-                className={`h-10 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-bg' : ''}`}
+                className={`h-10 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-card' : ''}`}
                 onPress={() => switchMode(m)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
@@ -191,7 +201,15 @@ export default function SignInScreen() {
             <Text className="font-semibold text-primary">{mode === 'login' ? '회원가입' : '로그인'}</Text>
           </Text>
         </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              </>
+            )}
+
+            <Pressable onPress={() => openBrowserAsync(LINKS.privacy)} className="mt-4 items-center py-1" accessibilityRole="link">
+              <Text className="text-caption text-mute underline">개인정보처리방침</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

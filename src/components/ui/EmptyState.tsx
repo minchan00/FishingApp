@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { colors } from '@/theme/colors';
 import { Button } from './Button';
 import { Icon, type IconName } from './Icon';
+import { useOnSea } from './Sea';
 
 type Props = {
   icon: IconName;
@@ -11,18 +12,19 @@ type Props = {
   onAction?: () => void;
 };
 
-/** 목록이 비었거나 불러오기에 실패했을 때 */
+/** 목록이 비었거나 불러오기에 실패했을 때. 바다 배경 위에서는 흰 글자로 바뀐다 */
 export function EmptyState({ icon, title, description, actionLabel, onAction }: Props) {
+  const onSea = useOnSea();
   return (
     <View className="items-center px-8 py-14">
-      <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-surface">
-        <Icon name={icon} size={26} color={colors.mute} />
+      <View className={`mb-4 h-14 w-14 items-center justify-center rounded-full ${onSea ? 'bg-white/20' : 'bg-surface'}`}>
+        <Icon name={icon} size={26} color={onSea ? colors.white : colors.mute} />
       </View>
-      <Text className="text-center text-heading text-ink">{title}</Text>
-      {description ? <Text className="mt-1.5 text-center text-label text-mute">{description}</Text> : null}
+      <Text className={`text-center text-heading ${onSea ? 'text-white' : 'text-ink'}`}>{title}</Text>
+      {description ? <Text className={`mt-1.5 text-center text-label ${onSea ? 'text-white/80' : 'text-mute'}`}>{description}</Text> : null}
       {actionLabel && onAction ? (
         <View className="mt-5">
-          <Button label={actionLabel} onPress={onAction} variant="secondary" size="md" block={false} />
+          <Button label={actionLabel} onPress={onAction} variant={onSea ? 'light' : 'secondary'} size="md" block={false} />
         </View>
       ) : null}
     </View>

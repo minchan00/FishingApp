@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { colors } from '@/theme/colors';
 import { Icon, type IconName } from './Icon';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'kakao';
+type Variant = 'primary' | 'accent' | 'secondary' | 'light' | 'ghost' | 'danger' | 'kakao';
 type Size = 'md' | 'lg';
 
 type Props = {
@@ -20,6 +20,8 @@ type Props = {
 
 const CONTAINER: Record<Variant, string> = {
   primary: 'bg-primary active:bg-primary-pressed',
+  accent: 'bg-accent active:bg-accent-pressed',
+  light: 'bg-card active:opacity-80',
   secondary: 'bg-surface active:bg-surface-strong',
   ghost: 'bg-transparent active:bg-surface',
   danger: 'bg-danger-soft active:bg-surface-strong',
@@ -28,6 +30,8 @@ const CONTAINER: Record<Variant, string> = {
 
 const TEXT: Record<Variant, string> = {
   primary: 'text-white',
+  accent: 'text-white',
+  light: 'text-ink',
   secondary: 'text-ink',
   ghost: 'text-primary',
   danger: 'text-danger',
@@ -36,6 +40,8 @@ const TEXT: Record<Variant, string> = {
 
 const TEXT_COLOR: Record<Variant, string> = {
   primary: colors.white,
+  accent: colors.white,
+  light: colors.ink,
   secondary: colors.ink,
   ghost: colors.primary,
   danger: colors.danger,

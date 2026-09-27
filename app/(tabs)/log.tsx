@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SeaScreen } from '@/components/ui/Sea';
 import { useDeleteLog, useLogs } from '@/hooks/queries';
 import { colors } from '@/theme/colors';
 import type { Catch, FishingLog } from '@/types/models';
@@ -32,7 +33,7 @@ function computeStats(logs: FishingLog[]) {
 function StatCard({ value, label }: { value: string | number; label: string }) {
   return (
     <Card className="flex-1">
-      <Text className="text-title text-ink" numberOfLines={1} adjustsFontSizeToFit>
+      <Text className="font-serif text-title text-ink" numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
       <Text className="mt-1 text-caption text-mute">{label}</Text>
@@ -90,18 +91,20 @@ export default function LogScreen() {
 
   if (logsQuery.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg">
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
+      <SeaScreen>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.white} size="large" />
+        </View>
+      </SeaScreen>
     );
   }
 
   return (
-    <View className="flex-1 bg-bg">
+    <SeaScreen>
       <ScreenHeader title="낚시 일지" eyebrow="나의 낚시 기록" right={<IconButton icon="plus" label="일지 기록" onPress={openNew} />} />
 
       {/* 일지 / 통계 전환 */}
-      <View className="mx-5 mb-2 flex-row rounded-field bg-surface p-1">
+      <View className="mx-4 mb-3 flex-row rounded-field bg-white/20 p-1">
         {TABS.map((tab) => {
           const active = activeTab === tab;
           return (
@@ -110,9 +113,9 @@ export default function LogScreen() {
               onPress={() => setActiveTab(tab)}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
-              className={`h-9 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-bg' : ''}`}
+              className={`h-9 flex-1 items-center justify-center rounded-[10px] ${active ? 'bg-card' : ''}`}
             >
-              <Text className={`text-label font-semibold ${active ? 'text-ink' : 'text-mute'}`}>{tab}</Text>
+              <Text className={`text-label font-semibold ${active ? 'text-ink' : 'text-white'}`}>{tab}</Text>
             </Pressable>
           );
         })}
@@ -145,7 +148,7 @@ export default function LogScreen() {
           ListFooterComponent={<View className="h-[30px]" />}
         />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pt-2 pb-8">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-4 pt-1 pb-8">
           <View className="flex-row gap-2">
             <StatCard value={stats.totalTrips} label="총 출조" />
             <StatCard value={stats.totalCatch} label="총 포획" />
@@ -201,6 +204,6 @@ export default function LogScreen() {
       />
 
       <LogFormModal visible={addModal} editingLog={editingLog} onClose={closeForm} />
-    </View>
+    </SeaScreen>
   );
 }

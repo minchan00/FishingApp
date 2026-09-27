@@ -10,6 +10,7 @@ import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SeaScreen } from '@/components/ui/Sea';
 import { useDeletePost, usePosts, useProfile, useToggleLike } from '@/hooks/queries';
 import { useUser } from '@/hooks/useSession';
 import { colors } from '@/theme/colors';
@@ -58,15 +59,15 @@ export default function CommunityScreen() {
   );
 
   return (
-    <View className="flex-1 bg-bg">
+    <SeaScreen>
       <ScreenHeader
         title="커뮤니티"
         eyebrow="낚시인들의 이야기"
         right={<IconButton icon="edit-3" label="글쓰기" onPress={() => setWriteModal(true)} />}
       />
 
-      <View className="border-b border-line pb-3">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="grow-0" contentContainerClassName="gap-2 px-5">
+      <View className="pb-3">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="grow-0" contentContainerClassName="gap-2 px-4">
           {CATEGORY_FILTERS.map((c) => (
             <Chip key={c} label={c} selected={activeCategory === c} onPress={() => setActiveCategory(c)} />
           ))}
@@ -90,7 +91,7 @@ export default function CommunityScreen() {
           <RefreshControl
             refreshing={postsQuery.isRefetching}
             onRefresh={() => postsQuery.refetch()}
-            tintColor={colors.primary}
+            tintColor={colors.white}
             colors={[colors.primary]}
           />
         }
@@ -105,7 +106,7 @@ export default function CommunityScreen() {
         }
         ListEmptyComponent={
           postsQuery.isPending ? (
-            <ActivityIndicator color={colors.primary} size="large" className="py-10" />
+            <ActivityIndicator color={colors.white} size="large" className="py-10" />
           ) : postsQuery.isError ? (
             <EmptyState
               icon="alert-circle"
@@ -130,6 +131,6 @@ export default function CommunityScreen() {
         userId={user.id}
         onClose={() => setSelectedPostId(null)}
       />
-    </View>
+    </SeaScreen>
   );
 }

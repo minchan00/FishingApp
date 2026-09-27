@@ -34,7 +34,7 @@ type Props = {
 export const LogCard = memo(function LogCard({ log, onPress }: Props) {
   const totalCount = log.catches.reduce((s, c) => s + c.count, 0);
   return (
-    <Pressable className="flex-row gap-3 border-b border-line px-5 py-4 active:bg-surface" onPress={() => onPress(log.id)}>
+    <Pressable className="mx-4 mb-2.5 flex-row gap-3 rounded-card bg-card px-4 py-4 active:opacity-80" onPress={() => onPress(log.id)}>
       <View className="flex-1">
         <View className="flex-row items-center gap-2">
           <Text className="text-caption text-mute">{formatKoreanDate(log.fishedOn)}</Text>
